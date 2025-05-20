@@ -8,22 +8,22 @@ import (
 	"strings"
 )
 
-const streamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
-
 type WikipediaClient struct {
 	client *http.Client
 	stats  *Stats
+	streamURL string
 }
 
-func NewWikipediaClient(stats *Stats) *WikipediaClient {
+func NewWikipediaClient(stats *Stats,streamURL string) *WikipediaClient {
 	return &WikipediaClient{
 		client: &http.Client{},
 		stats:  stats,
+		streamURL: streamURL,
 	}
 }
 
 func (wc *WikipediaClient) Connect() error {
-	resp, err := wc.client.Get(streamURL)
+	resp, err := wc.client.Get(wc.streamURL)
 	if err != nil {
 		return err
 	}
