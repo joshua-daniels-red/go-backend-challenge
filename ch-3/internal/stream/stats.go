@@ -1,10 +1,22 @@
 package stream
 
 import (
-	"encoding/json"
-	"net/http"
 	"sync"
 )
+
+type StatsSnapshot struct {
+	Messages      int            `json:"messages"`
+	DistinctUsers int            `json:"distinct_users"`
+	Bots          int            `json:"bots"`
+	NonBots       int            `json:"non_bots"`
+	ByServer      map[string]int `json:"by_server_url"`
+}
+
+type StatsStore interface {
+	Record(ev ChangeEvent)
+	GetSnapshot() StatsSnapshot
+}
+
 
 type Stats struct {
 	mu           sync.RWMutex
@@ -22,40 +34,29 @@ func NewStats() *Stats {
 	}
 }
 
-func (s *Stats) Record(change ChangeEvent) {
+func (s *Stats) Record(ev ChangeEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.Total++
-	s.Users[change.User] = struct{}{}
-	if change.Bot {
+	s.Users[ev.User] = struct{}{}
+	if ev.Bot {
 		s.BotCount++
 	} else {
 		s.NonBotCount++
 	}
-	s.ServerCounts[change.ServerURL]++
+	s.ServerCounts[ev.ServerURL]++
 }
 
-func (s *Stats) Handler(w http.ResponseWriter, r *http.Request) {
+func (s *Stats) GetSnapshot() StatsSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	type response struct {
-		Messages     int            `json:"messages"`
-		DistinctUsers int           `json:"distinct_users"`
-		Bots         int            `json:"bots"`
-		NonBots      int            `json:"non_bots"`
-		ByServer     map[string]int `json:"by_server_url"`
-	}
-
-	resp := response{
-		Messages:     s.Total,
+	return StatsSnapshot{
+		Messages:      s.Total,
 		DistinctUsers: len(s.Users),
-		Bots:         s.BotCount,
-		NonBots:      s.NonBotCount,
-		ByServer:     s.ServerCounts,
+		Bots:          s.BotCount,
+		NonBots:       s.NonBotCount,
+		ByServer:      s.ServerCounts,
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
 }

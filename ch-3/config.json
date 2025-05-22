@@ -1,4 +1,7 @@
 {
-  "port": ":7000",
-  "stream_url": "https://stream.wikimedia.org/v2/stream/recentchange"
+  "port": "7000",
+  "stream_url": "https://stream.wikimedia.org/v2/stream/recentchange",
+  "storage": "cassandra",
+  "cassandra_host": "cassandra-db",
+  "jwt_secret": "supersecretkey"
 }

@@ -3,21 +3,22 @@ package stream
 import (
 	"bufio"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 )
 
+// WikipediaClient streams events from the Wikimedia API and pushes them to a StatsStore.
 type WikipediaClient struct {
-	client *http.Client
-	stats  *Stats
+	client    *http.Client
+	stats     StatsStore
 	streamURL string
 }
 
-func NewWikipediaClient(stats *Stats,streamURL string) *WikipediaClient {
+// NewWikipediaClient accepts any StatsStore (in-memory or Cassandra) and a stream URL.
+func NewWikipediaClient(stats StatsStore, streamURL string) *WikipediaClient {
 	return &WikipediaClient{
-		client: &http.Client{},
-		stats:  stats,
+		client:    &http.Client{},
+		stats:     stats,
 		streamURL: streamURL,
 	}
 }
@@ -32,18 +33,16 @@ func (wc *WikipediaClient) Connect() error {
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) < 6 || !strings.HasPrefix(line, "data:") {
+		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
 
 		line = strings.TrimPrefix(line, "data:")
-		var change ChangeEvent
-		if err := json.Unmarshal([]byte(line), &change); err != nil {
-			log.Printf("failed to parse event: %v", err)
+		var ev ChangeEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
 			continue
 		}
-
-		wc.stats.Record(change)
+		wc.stats.Record(ev)
 	}
 
 	return scanner.Err()
