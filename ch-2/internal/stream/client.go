@@ -3,23 +3,26 @@ package stream
 import (
 	"bufio"
 	"encoding/json"
-	"log"
 	"net/http"
+	"strings"
 )
 
-const streamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
-
-// WikipediaClient manages the connection to the stream
 type WikipediaClient struct {
-	client *http.Client
+	client    *http.Client
+	stats     *Stats
+	streamURL string
 }
 
-func NewWikipediaClient() *WikipediaClient {
-	return &WikipediaClient{client: &http.Client{}}
+func NewWikipediaClient(stats *Stats, streamURL string) *WikipediaClient {
+	return &WikipediaClient{
+		client:    &http.Client{},
+		stats:     stats,
+		streamURL: streamURL,
+	}
 }
 
-func (wc *WikipediaClient) ConnectAndLog() error {
-	resp, err := wc.client.Get(streamURL)
+func (wc *WikipediaClient) Connect() error {
+	resp, err := wc.client.Get(wc.streamURL)
 	if err != nil {
 		return err
 	}
@@ -28,18 +31,16 @@ func (wc *WikipediaClient) ConnectAndLog() error {
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) < 6 || line[:5] != "data:" {
+		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
 
-		line = line[5:] // trim "data:"
-		var change ChangeEvent
-		if err := json.Unmarshal([]byte(line), &change); err != nil {
-			log.Printf("failed to parse event: %v", err)
+		line = strings.TrimPrefix(line, "data:")
+		var ev ChangeEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
 			continue
 		}
-
-		log.Printf("[%s] %s - %s", change.Type, change.User, change.Title)
+		wc.stats.Record(ev)
 	}
 
 	return scanner.Err()
