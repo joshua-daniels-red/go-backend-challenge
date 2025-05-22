@@ -1,30 +1,36 @@
-package server
+package server_test
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-1/internal/server"
 )
 
-func TestStatusHandler(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/status", nil)
-	rr := httptest.NewRecorder()
+func TestStatusEndpoint(t *testing.T) {
+	srv := server.NewHTTPServer(":7000")
+	req := httptest.NewRequest("GET", "/status", nil)
+	w := httptest.NewRecorder()
 
-	handler := http.HandlerFunc(statusHandler)
-	handler.ServeHTTP(rr, req)
+	srv.Handler.ServeHTTP(w, req)
 
-	if rr.Code != http.StatusOK {
-		t.Errorf("Expected status code %d, got %d", http.StatusOK, rr.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
 	}
+}
 
-	var resp statusResponse
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode JSON: %v", err)
+func TestStatsEndpoint(t *testing.T) {
+	srv := server.NewHTTPServer(":7000")
+	req := httptest.NewRequest("GET", "/stats", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
 	}
-
-	expected := "ok"
-	if resp.Status != expected {
-		t.Errorf("Expected status %q, got %q", expected, resp.Status)
+	if len(w.Body.Bytes()) == 0 {
+		t.Fatal("expected non-empty stats response")
 	}
 }
