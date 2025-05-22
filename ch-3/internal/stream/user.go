@@ -8,6 +8,10 @@ type UserStore struct {
 	session *gocql.Session
 }
 
+type CredentialValidator interface {
+	ValidateCredentials(username, password string) bool
+}
+
 func NewUserStore(session *gocql.Session) *UserStore {
 	return &UserStore{session: session}
 }

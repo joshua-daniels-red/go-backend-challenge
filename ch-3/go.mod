@@ -2,7 +2,15 @@ module github.com/joshua-daniels-red/go-backend-challenge/ch-3
 
 go 1.21
 
-require github.com/gocql/gocql v1.7.0
+require (
+	github.com/gocql/gocql v1.7.0
+	github.com/stretchr/testify v1.3.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+)
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.2

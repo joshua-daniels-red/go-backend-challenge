@@ -18,7 +18,7 @@ type LoginResponse struct {
 	Token string `json:"token"`
 }
 
-func LoginHandler(us *stream.UserStore, secret string) http.HandlerFunc {
+func LoginHandler(us stream.CredentialValidator, secret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
