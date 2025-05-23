@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-4/internal/stream"
 )
 
@@ -42,6 +42,9 @@ func LoginHandler(us stream.CredentialValidator, secret string) http.HandlerFunc
 			return
 		}
 
-		json.NewEncoder(w).Encode(LoginResponse{Token: signed})
+		if err := json.NewEncoder(w).Encode(LoginResponse{Token: signed}); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}
 }
