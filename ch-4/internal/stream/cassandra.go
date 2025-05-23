@@ -37,24 +37,31 @@ func NewCassandraStats(host string) (*CassandraStats, error) {
 	return nil, fmt.Errorf("failed to connect to Cassandra after retries: %w", err)
 }
 
-
 func (cs *CassandraStats) Record(ev ChangeEvent) {
 	go func() {
 		ctx := context.Background()
 
-		//cs.session.Query(`UPDATE stats_summary SET total_messages = total_messages + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
 		if err := cs.session.Query(`UPDATE stats_summary SET total_messages = total_messages + 1 WHERE id = 'global'`).WithContext(ctx).Exec(); err != nil {
-    		log.Printf("Error executing query: %v", err)
+			log.Printf("error updating total_messages: %v", err)
 		}
 
 		if ev.Bot {
-			cs.session.Query(`UPDATE stats_summary SET bot_count = bot_count + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
+			if err := cs.session.Query(`UPDATE stats_summary SET bot_count = bot_count + 1 WHERE id = 'global'`).WithContext(ctx).Exec(); err != nil {
+				log.Printf("error updating bot_count: %v", err)
+			}
 		} else {
-			cs.session.Query(`UPDATE stats_summary SET non_bot_count = non_bot_count + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
+			if err := cs.session.Query(`UPDATE stats_summary SET non_bot_count = non_bot_count + 1 WHERE id = 'global'`).WithContext(ctx).Exec(); err != nil {
+				log.Printf("error updating non_bot_count: %v", err)
+			}
 		}
 
-		cs.session.Query(`INSERT INTO unique_users (username) VALUES (?)`, ev.User).WithContext(ctx).Exec()
-		cs.session.Query(`UPDATE server_counts SET count = count + 1 WHERE server_url = ?`, ev.ServerURL).WithContext(ctx).Exec()
+		if err := cs.session.Query(`INSERT INTO unique_users (username) VALUES (?)`, ev.User).WithContext(ctx).Exec(); err != nil {
+			log.Printf("error inserting unique_user: %v", err)
+		}
+
+		if err := cs.session.Query(`UPDATE server_counts SET count = count + 1 WHERE server_url = ?`, ev.ServerURL).WithContext(ctx).Exec(); err != nil {
+			log.Printf("error updating server_counts: %v", err)
+		}
 	}()
 }
 
@@ -62,8 +69,7 @@ func (cs *CassandraStats) GetSnapshot() StatsSnapshot {
 	ctx := context.Background()
 
 	var total, bots, nonBots int
-	err := cs.session.Query(`SELECT total_messages, bot_count, non_bot_count FROM stats_summary WHERE id = 'global'`).WithContext(ctx).Consistency(gocql.One).Scan(&total, &bots, &nonBots)
-	if err != nil {
+	if err := cs.session.Query(`SELECT total_messages, bot_count, non_bot_count FROM stats_summary WHERE id = 'global'`).WithContext(ctx).Consistency(gocql.One).Scan(&total, &bots, &nonBots); err != nil {
 		log.Printf("error fetching summary: %v", err)
 	}
 
@@ -72,7 +78,9 @@ func (cs *CassandraStats) GetSnapshot() StatsSnapshot {
 	for iter.Scan(new(string)) {
 		totalUsers++
 	}
-	iter.Close()
+	if err := iter.Close(); err != nil {
+		log.Printf("error closing iterator for unique_users: %v", err)
+	}
 
 	serverCounts := make(map[string]int)
 	iter = cs.session.Query(`SELECT server_url, count FROM server_counts`).WithContext(ctx).Iter()
@@ -81,7 +89,9 @@ func (cs *CassandraStats) GetSnapshot() StatsSnapshot {
 	for iter.Scan(&url, &count) {
 		serverCounts[url] = count
 	}
-	iter.Close()
+	if err := iter.Close(); err != nil {
+		log.Printf("error closing iterator for server_counts: %v", err)
+	}
 
 	return StatsSnapshot{
 		Messages:      total,
