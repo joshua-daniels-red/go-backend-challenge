@@ -49,7 +49,9 @@ func NewHTTPServer(cfg *config.Config, injectedStore ...stream.StatsStore) *http
 
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(statusResponse{Status: "ok"})
+		if err := json.NewEncoder(w).Encode(statusResponse{Status: "ok"}); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
 	})
 
 	if cassSession != nil {
@@ -60,7 +62,9 @@ func NewHTTPServer(cfg *config.Config, injectedStore ...stream.StatsStore) *http
 	mux.HandleFunc("/stats", AuthMiddleware(cfg.JWTSecret, func(w http.ResponseWriter, r *http.Request) {
 		snapshot := store.GetSnapshot()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(snapshot)
+		if err := json.NewEncoder(w).Encode(snapshot); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
 	}))
 
 	return &http.Server{
