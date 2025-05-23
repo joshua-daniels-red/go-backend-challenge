@@ -43,7 +43,8 @@ jobs:
 
       - name: Create schema
         run: |
-          docker exec $(docker ps -qf "ancestor=cassandra:4.1") cqlsh -f db/init.cql
+          docker cp db/init.cql $(docker ps -qf "ancestor=cassandra:4.1"):/init.cql
+          docker exec $(docker ps -qf "ancestor=cassandra:4.1") cqlsh -f /init.cql
 
       - name: Run unit tests
         run: |
