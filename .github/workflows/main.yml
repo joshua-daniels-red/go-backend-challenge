@@ -43,24 +43,24 @@ jobs:
 
       - name: Create schema
         run: |
-          docker cp db/init.cql $(docker ps -qf "ancestor=cassandra:4.1"):/init.cql
+          docker cp ch-4/db/init.cql $(docker ps -qf "ancestor=cassandra:4.1"):/init.cql
           docker exec $(docker ps -qf "ancestor=cassandra:4.1") cqlsh -f /init.cql
 
       - name: Run unit tests
-        run: |
-          go test -v ./...
+        working-directory: ./ch-4
+        run: go test -v ./...
 
       - name: Run Go vet
-        run: |
-          go vet ./...
+        working-directory: ./ch-4
+        run: go vet ./...
 
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
 
       - name: Run golangci-lint
-        run: |
-          $(go env GOPATH)/bin/golangci-lint run ./...
+        working-directory: ./ch-4
+        run: $(go env GOPATH)/bin/golangci-lint run ./...
 
   build:
     name: Build Docker Image
@@ -84,6 +84,6 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./ch-4
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/goanalytics:latest
