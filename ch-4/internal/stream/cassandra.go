@@ -42,7 +42,11 @@ func (cs *CassandraStats) Record(ev ChangeEvent) {
 	go func() {
 		ctx := context.Background()
 
-		cs.session.Query(`UPDATE stats_summary SET total_messages = total_messages + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
+		//cs.session.Query(`UPDATE stats_summary SET total_messages = total_messages + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
+		if err := cs.session.Query(`UPDATE stats_summary SET total_messages = total_messages + 1 WHERE id = 'global'`).WithContext(ctx).Exec(); err != nil {
+    		log.Printf("Error executing query: %v", err)
+		}
+
 		if ev.Bot {
 			cs.session.Query(`UPDATE stats_summary SET bot_count = bot_count + 1 WHERE id = 'global'`).WithContext(ctx).Exec()
 		} else {
