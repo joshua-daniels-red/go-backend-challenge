@@ -11,6 +11,7 @@ type Config struct {
 	Storage       string `json:"storage"`
 	CassandraHost string `json:"cassandra_host"`
 	JWTSecret     string `json:"jwt_secret"`
+	DisableStreaming bool
 }
 
 func LoadConfig(path string) (*Config, error) {
