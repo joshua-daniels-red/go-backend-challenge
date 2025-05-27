@@ -62,7 +62,7 @@ To simulate the GitHub Actions pipeline locally, you can use [`act`](https://git
 
 ```bash
 # Run all GitHub Actions workflows locally
-act pull_request
+act pull_request #there are issues running locally, I verified this in the github workflow
 ```
 
 Ensure Docker is running, and all services (e.g. Cassandra) are defined in your `docker-compose.yml`.
