@@ -12,9 +12,35 @@ import (
 )
 
 type mockUserStore struct{}
+type brokenWriter struct {
+	http.ResponseWriter
+}
+
+func (bw *brokenWriter) Write(b []byte) (int, error) {
+	return 0, assert.AnError 
+}
+
 
 func (m *mockUserStore) ValidateCredentials(username, password string) bool {
 	return username == "admin" && password == "password123"
+}
+
+func TestLoginHandler_ResponseEncodingFailure(t *testing.T) {
+	store := &mockUserStore{}
+	secret := "testsecret"
+	handler := LoginHandler(store, secret)
+
+	reqBody, _ := json.Marshal(LoginRequest{
+		Username: "admin",
+		Password: "password123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(reqBody))
+	recorder := httptest.NewRecorder()
+	bw := &brokenWriter{recorder}
+
+	handler.ServeHTTP(bw, req)
+
+	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 }
 
 func TestLoginHandler_Success(t *testing.T) {

@@ -6,11 +6,12 @@ import (
 )
 
 type Config struct {
-	Port          string `json:"port"`
-	StreamURL     string `json:"stream_url"`
-	Storage       string `json:"storage"`
-	CassandraHost string `json:"cassandra_host"`
-	JWTSecret     string `json:"jwt_secret"`
+	Port          	 string `json:"port"`
+	StreamURL     	 string `json:"stream_url"`
+	Storage       	 string `json:"storage"`
+	CassandraHost 	 string `json:"cassandra_host"`
+	JWTSecret     	 string `json:"jwt_secret"`
+	DisableStreaming bool
 }
 
 func LoadConfig(path string) (*Config, error) {

@@ -20,30 +20,37 @@ func NewHTTPServer(cfg *config.Config, injectedStore ...stream.StatsStore) *http
 	var err error
 
 	if cfg.Storage == "cassandra" {
-		store, err = stream.NewCassandraStats(cfg.CassandraHost)
-		if err != nil {
-			log.Fatalf("failed to init Cassandra store: %v", err)
-		}
+		if len(injectedStore) > 0 {
+			store = injectedStore[0]
+			log.Println("Using injected Cassandra store (test mode)")
+		} else {
+			store, err = stream.NewCassandraStats(cfg.CassandraHost)
+			if err != nil {
+				log.Fatalf("failed to init Cassandra store: %v", err)
+			}
 
-		cluster := gocql.NewCluster(cfg.CassandraHost)
-		cluster.Keyspace = "goanalytics"
-		cassSession, err = cluster.CreateSession()
-		if err != nil {
-			log.Fatalf("could not establish session for auth: %v", err)
-		}
+			cluster := gocql.NewCluster(cfg.CassandraHost)
+			cluster.Keyspace = "goanalytics"
+			cassSession, err = cluster.CreateSession()
+			if err != nil {
+				log.Fatalf("could not establish session for auth: %v", err)
+			}
 
-		log.Println("Using Cassandra storage")
+			log.Println("Using Cassandra storage")
+		}
 	} else {
 		store = stream.NewStats()
 		log.Println("Using in-memory storage")
 	}
 
-	client := stream.NewWikipediaClient(store, cfg.StreamURL)
-	go func() {
-		if err := client.Connect(); err != nil {
-			log.Fatalf("streaming failed: %v", err)
-		}
-	}()
+	if !cfg.DisableStreaming {
+		client := stream.NewWikipediaClient(store, cfg.StreamURL)
+		go func() {
+			if err := client.Connect(); err != nil {
+				log.Fatalf("streaming failed: %v", err)
+			}
+		}()
+	}
 
 	mux := http.NewServeMux()
 
@@ -54,10 +61,14 @@ func NewHTTPServer(cfg *config.Config, injectedStore ...stream.StatsStore) *http
 		}
 	})
 
+	var userStore stream.UserStore
 	if cassSession != nil {
-		userStore := stream.NewUserStore(cassSession)
-		mux.HandleFunc("/login", LoginHandler(userStore, cfg.JWTSecret))
+		userStore = stream.NewUserStore(cassSession)
+	} else {
+		userStore = stream.NewInMemoryUserStore()
 	}
+	mux.HandleFunc("/login", LoginHandler(userStore, cfg.JWTSecret))
+
 
 	mux.HandleFunc("/stats", AuthMiddleware(cfg.JWTSecret, func(w http.ResponseWriter, r *http.Request) {
 		snapshot := store.GetSnapshot()

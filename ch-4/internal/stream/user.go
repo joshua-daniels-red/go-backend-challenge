@@ -4,23 +4,34 @@ import (
 	"github.com/gocql/gocql"
 )
 
-type UserStore struct {
-	session *gocql.Session
-}
-
-type CredentialValidator interface {
+type UserStore interface {
 	ValidateCredentials(username, password string) bool
 }
 
-func NewUserStore(session *gocql.Session) *UserStore {
-	return &UserStore{session: session}
+
+type CassandraUserStore struct {
+	session *gocql.Session
 }
 
-func (us *UserStore) ValidateCredentials(username, password string) bool {
+func NewUserStore(session *gocql.Session) *CassandraUserStore {
+	return &CassandraUserStore{session: session}
+}
+
+func (us *CassandraUserStore) ValidateCredentials(username, password string) bool {
 	var storedPassword string
 	if err := us.session.Query(`SELECT password FROM goanalytics.users WHERE username = ?`, username).
 		Scan(&storedPassword); err != nil {
 		return false
 	}
 	return storedPassword == password
+}
+
+type InMemoryUserStore struct{}
+
+func NewInMemoryUserStore() *InMemoryUserStore {
+	return &InMemoryUserStore{}
+}
+
+func (s *InMemoryUserStore) ValidateCredentials(username, password string) bool {
+	return username == "admin" && password == "admin"
 }
