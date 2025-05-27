@@ -64,7 +64,7 @@ ch-3/
 ```
 
 Set `"storage": "in-memory"` to switch off database usage.
-
+with in memory the password is admin
 ---
 
 ## 🐳 Docker
@@ -128,7 +128,6 @@ docker-compose up --build
 ## 🔐 Auth Endpoints
 
 ### POST `/login`
-
 ```bash
 curl -X POST http://localhost:7000/login \
   -H "Content-Type: application/json" \
