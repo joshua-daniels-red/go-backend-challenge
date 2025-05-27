@@ -24,29 +24,42 @@ This module builds upon `ch-2` by adding persistent storage using Cassandra and 
 
 ```
 ch-3/
-├── cmd/
-│   └── server/
-│       └── main.go              # Entry point
+├── cmd/server/
+│   ├── main.go                  # Entry point: sets up config and starts the server
+│   └── main_test.go             # Tests for top-level application startup logic
+│
 ├── db/
-│   └── init.cql                 # Cassandra schema + seed data
+│   └── init.cql                 # CQL script to initialize Cassandra schema
+│
 ├── internal/
 │   ├── config/
-│   │   └── loader.go            # Loads JSON config
+│   │   ├── loader.go            # Loads configuration from env vars or JSON
+│   │   └── loader_test.go       # Unit tests for config loader
+│   │
 │   ├── server/
-│   │   ├── auth.go              # Login logic
-│   │   ├── middleware.go        # JWT validation
-│   │   ├── server.go            # HTTP handlers
+│   │   ├── auth.go              # JWT auth: token creation and validation
+│   │   ├── auth_test.go         # Tests for auth logic
+│   │   ├── middleware.go        # Middleware to enforce JWT on protected routes
+│   │   ├── middleware_test.go   # Tests for middleware
+│   │   └── server.go            # Defines routes and HTTP handlers
+│   │   └── server_test.go       # Tests for HTTP routes
+│   │
 │   └── stream/
-│       ├── cassandra.go        # Cassandra implementation of StatsStore
-│       ├── client.go           # Wikipedia stream consumer
-│       ├── stats.go            # In-memory StatsStore
-│       ├── types.go            # Common types
-│       └── user.go             # UserStore interface + Cassandra implementation
-├── config.json                 # Runtime config
-├── docker-compose.yml          # App + Cassandra orchestration
-├── Dockerfile                  # Multi-stage build
-├── go.mod / go.sum             # Go dependencies
-└── README.md                   # This file
+│       ├── cassandra.go         # Cassandra-based stats store (implements StatsStore)
+│       ├── client.go            # Wikipedia stream client (stubbed/disabled in ch-4)
+│       ├── client_test.go       # Tests for stream client logic
+│       ├── stats.go             # Stats logic and in-memory store
+│       ├── stats_test.go        # Tests for stats logic (both memory and Cassandra)
+│       ├── types.go             # Shared data structures (e.g., Event, Snapshot)
+│       ├── user.go              # Dummy user login validation logic
+│       └── user_test.go         # Tests for user login logic
+│
+├── Dockerfile                   # Builds Go app container
+├── README.md                    # Chapter-specific documentation
+├── config.json                  # Optional: static config file (used in some envs)
+├── docker-compose.yml           # Spins up Go app, Cassandra, and DB initializer
+├── go.mod / go.sum              # Module and dependency tracking
+
 ```
 
 ---
