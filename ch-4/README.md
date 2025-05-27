@@ -1,69 +1,46 @@
-# Chapter 3: Persistent Stats Backend with Auth
+# Chapter 4: CI/CD Pipeline & Publishing
 
-This module builds upon `ch-2` by adding persistent storage using Cassandra and integrating basic authentication with JWT. It demonstrates an end-to-end backend with:
-
-* Real-time processing of Wikipedia change streams
-* Stats aggregation
-* Optional storage in memory or Cassandra
-* Auth-protected `/stats` endpoint
+This chapter builds on previous modules by introducing a continuous integration and deployment (CI/CD) pipeline for the application. It ensures all changes are validated through automated testing and linting, and builds are published to a container registry like `ghcr.io` or DockerHub once verified.
 
 ---
 
 ## ✅ Features
 
-* Full Docker Compose stack
-* Switchable backend storage (in-memory or Cassandra)
-* Basic login via `/login` with JWT token issuance
-* Bearer token middleware for protected endpoints
-* `init.cql` script to auto-provision Cassandra schema
-* Clean graceful shutdown
+* Full CI/CD pipeline using GitHub Actions
+* Test automation for PRs to `main`
+* Linting and code quality checks
+* Docker image creation and publishing
+* Support for local pipeline testing using [`act`](https://github.com/nektos/act)
 
 ---
 
-## 📁 Project Structure
+## ↻ CI/CD Workflow
 
-```
-ch-3/
-├── cmd/
-│   └── server/
-│       └── main.go              # Entry point
-├── db/
-│   └── init.cql                 # Cassandra schema + seed data
-├── internal/
-│   ├── config/
-│   │   └── loader.go            # Loads JSON config
-│   ├── server/
-│   │   ├── auth.go              # Login logic
-│   │   ├── middleware.go        # JWT validation
-│   │   ├── server.go            # HTTP handlers
-│   └── stream/
-│       ├── cassandra.go        # Cassandra implementation of StatsStore
-│       ├── client.go           # Wikipedia stream consumer
-│       ├── stats.go            # In-memory StatsStore
-│       ├── types.go            # Common types
-│       └── user.go             # UserStore interface + Cassandra implementation
-├── config.json                 # Runtime config
-├── docker-compose.yml          # App + Cassandra orchestration
-├── Dockerfile                  # Multi-stage build
-├── go.mod / go.sum             # Go dependencies
-└── README.md                   # This file
-```
+### On Pull Request to `main`, the pipeline will:
 
----
+1. **Run Unit Tests**
 
-## ⚙️ Config: `config.json`
+   * All unit tests within the project must pass.
 
-```json
-{
-  "port": "7000",
-  "stream_url": "https://stream.wikimedia.org/v2/stream/recentchange",
-  "storage": "cassandra",
-  "cassandra_host": "cassandra-db",
-  "jwt_secret": "secret123"
-}
-```
+2. **Run Integration Tests**
 
-Set `"storage": "in-memory"` to switch off database usage.
+   * Test the application against the database (using `docker-compose`).
+
+3. **Run `go vet`**
+
+   * Ensure Go code adheres to good practices.
+
+4. **Run `golangci-lint`**
+
+   * Perform static code analysis. See: [https://github.com/golangci/golangci-lint](https://github.com/golangci/golangci-lint)
+
+5. **Build Docker Image**
+
+   * Create a new image as defined in the `Dockerfile`.
+
+6. **Publish Image**
+
+   * Push the image to GitHub Container Registry (`ghcr.io`) or DockerHub when all checks pass.
 
 ---
 
@@ -71,131 +48,51 @@ Set `"storage": "in-memory"` to switch off database usage.
 
 ### Dockerfile
 
-Multi-stage build with a final `scratch` image for minimal footprint.
+A multi-stage build that compiles the Go app and produces a minimal final image.
 
 ### docker-compose.yml
 
-```yaml
-version: '3.8'
+Used for integration testing with services like Cassandra.
 
-services:
-  cassandra-db:
-    image: cassandra:4.1
-    container_name: cassandra-db
-    ports:
-      - "9042:9042"
-    volumes:
-      - ./db/init.cql:/docker-entrypoint-initdb.d/init.cql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+---
 
-  app:
-    build: .
-    depends_on:
-      cassandra-db:
-        condition: service_healthy
-    ports:
-      - "7000:7000"
-    volumes:
-      - ./config.json:/config.json
-    environment:
-      - CASSANDRA_HOST=cassandra-db
+## 🧪 Local Testing
+
+To simulate the GitHub Actions pipeline locally, you can use [`act`](https://github.com/nektos/act):
+
+```bash
+# Run all GitHub Actions workflows locally
+act pull_request
+```
+
+Ensure Docker is running, and all services (e.g. Cassandra) are defined in your `docker-compose.yml`.
+
+---
+
+## 🧹 Linting
+
+Install and run `golangci-lint` locally:
+
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+golangci-lint run ./...
 ```
 
 ---
 
-## 🚀 Usage
-
-### Local run (in-memory)
+## 🤪 Unit + Integration Testing
 
 ```bash
-cd ch-3
-CONFIG_FILE=config.json go run ./cmd/server
+go test ./...       # Unit tests
+go test -race ./... # Race condition detection
 ```
 
-### Docker run
+For integration tests (against DB), use:
 
 ```bash
-# Build and start app + Cassandra
-docker-compose up --build
-```
-
----
-
-## 🔐 Auth Endpoints
-
-### POST `/login`
-
-```bash
-curl -X POST http://localhost:7000/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "password123"}'
-```
-
-Returns:
-
-```json
-{"token": "<JWT token>"}
-```
-
-### GET `/stats` (Requires Bearer token)
-
-```bash
-curl -H "Authorization: Bearer <token>" http://localhost:7000/stats
-```
-
----
-
-## 🧪 Testing
-
-### Unit tests
-
-```bash
-cd ch-3
-go test ./...
-```
-
-### Race condition testing
-
-```bash
-go test -race ./...
-```
-
----
-
-## 🛠️ Seeded Cassandra Schema: `init.cql`
-
-```sql
-CREATE KEYSPACE IF NOT EXISTS goanalytics WITH REPLICATION = {
-  'class': 'SimpleStrategy', 'replication_factor': 1
-};
-USE goanalytics;
-
-CREATE TABLE IF NOT EXISTS stats_summary (
-  id TEXT PRIMARY KEY,
-  total_messages COUNTER,
-  bot_count COUNTER,
-  non_bot_count COUNTER
-);
-
-CREATE TABLE IF NOT EXISTS unique_users (
-  username TEXT PRIMARY KEY
-);
-
-CREATE TABLE IF NOT EXISTS server_counts (
-  server_url TEXT PRIMARY KEY,
-  count COUNTER
-);
-
-CREATE TABLE IF NOT EXISTS users (
-  username TEXT PRIMARY KEY,
-  password TEXT
-);
-
-INSERT INTO users (username, password) VALUES ('admin', 'password123');
+docker-compose up -d
+go test ./... 
 ```
 
 ---
