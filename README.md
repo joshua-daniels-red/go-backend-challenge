@@ -1,86 +1,132 @@
-# go-backend-challenge
+# Go Backend Challenge
 
-A modular Go project structured into chapters, each showcasing different backend concepts, best practices, and architecture patterns. The goal of this repository is to provide a learning playground and real-world examples for building production-grade backend services using Go.
+This repository is a progressive, hands-on backend engineering challenge using Go. Each chapter builds upon the previous to construct a multi-threaded stream processing service with pluggable storage and robust deployment workflows. This project emphasizes use of the Go standard library, clean architecture, containerization, and CI/CD best practices.
 
-## 🚀 Project Overview
+---
 
-This repository is organized into chapters, with each chapter focusing on a specific backend development concept or challenge. You can explore each chapter independently to learn, test, or build upon it.
+## 📚 Project Overview
 
-### ✨ Features Across Chapters
+The goal is to incrementally develop a backend service that:
 
-* Clean project architecture using Go best practices
-* Real-world backend patterns: HTTP servers, JWT auth, DB integrations, etc.
-* Modular directory structure for scalability and clarity
-* GitHub Actions CI for automated linting and builds
+* Listens for HTTP requests
+* Consumes Wikimedia's RecentChange stream
+* Processes and aggregates streaming data
+* Exposes in-memory and persistent statistics endpoints
+* Supports JWT-based authentication
+* Is containerized and CI/CD ready
+
+---
 
 ## 📁 Repository Structure
 
 ```
 go-backend-challenge/
-├── ch-1/               # Basic HTTP server with simple endpoints
-├── ch-2/               # Middleware and routing enhancements
-├── ch-3/               # JSON handling and request validation
-├── ch-4/               # Stats service with pluggable storage backends (e.g., Cassandra)
-├── ch-5/               # 
+├── ch-1/          # Basic HTTP server with /status endpoint on port 7000
+├── ch-2/          # Dockerized version of ch-1 with externalized configuration
+├── ch-3/          # Adds streaming, Cassandra DB, and JWT-based authentication
+├── ch-4/          # CI/CD pipeline: test, lint, docker build, publish
 ├── go.mod
 ├── go.sum
-└── README.md           # This file
+└── README.md      # This file
 ```
-
-Each chapter contains its own `README.md` with setup and usage instructions specific to that module.
-
-## 🛠️ Getting Started
-
-To get started with any chapter:
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/your-username/go-backend-challenge.git
-   cd go-backend-challenge
-   ```
-
-2. Navigate to the desired chapter:
-
-   ```bash
-   cd ch-4
-   ```
-
-3. Install dependencies:
-
-   ```bash
-   go mod tidy
-   ```
-
-4. Run the server:
-
-   ```bash
-   go run cmd/server/main.go
-   ```
-
-## ✅ Requirements
-
-* Go 1.20+
-* Docker (optional, for running services like Cassandra locally)
-* Make (optional, for workflows)
-
-## 🧪 CI/CD
-
-The project uses GitHub Actions to:
-
-* Run linters (`golangci-lint`)
-* Validate builds
-* Ensure consistent code formatting
-
-## 📚 Learning Goals
-
-This repository is structured to help developers:
-
-* Understand idiomatic Go practices
-* Learn how to write scalable and testable backend code
-* Practice real-world concepts like authentication, metrics, error handling, and observability
-
 
 ---
 
-Built with ❤️ to master Go backend development.
+## 🔧 Chapters Breakdown
+
+### ✅ Chapter 1: Basic HTTP Server
+
+* Go HTTP server listening on port `7000`
+* Implements `/status` endpoint for health checks
+* Laid out using idiomatic Go project structure (`cmd/`, `internal/`)
+
+### ✅ Chapter 2: Dockerization
+
+* Introduces `Dockerfile` and containerizes the application
+* Moves configuration (e.g., port, stream URL) to external `.env` or config file
+* Build using multi-stage and `scratch` base image
+* Adds `docker-compose.yml` for running locally
+
+### ✅ Chapter 3: Streaming, Cassandra & Auth
+
+* Connects to the Wikimedia RecentChange stream
+* Implements `/stats` endpoint with in-memory or Cassandra-backed storage
+* Tracks:
+
+  * Total messages consumed
+  * Distinct users
+  * Bots vs Non-bots
+  * Count by `server_name`
+* Introduces `StatsStore` interface to support pluggable storage
+* Adds Cassandra implementation (`CassandraStats`) using `gocql`
+* Adds `/login` endpoint to issue JWTs
+* Secures `/stats` with Bearer token authentication
+* Configurable via a centralized config file
+* Integration tested with `docker-compose`
+
+### ✅ Chapter 4: CI/CD Pipeline
+
+* Adds GitHub Actions workflow to automate:
+
+  * Running all unit and integration tests
+  * `go vet` and `golangci-lint`
+  * Building and pushing Docker image
+* Local CI simulation tested with [`nektos/act`](https://github.com/nektos/act)
+* Ensures standards compliance and publishing readiness
+
+---
+
+## 📊 Statistics Endpoint (`/stats`)
+
+* Total messages consumed
+* Distinct users
+* Bots vs Non-bots
+* Count by distinct `server_name`
+
+---
+
+## 🔐 Authentication
+
+* `POST /login` issues JWTs with configured secret
+* `/stats` is secured via Bearer token
+* Configurable secret key via env/config file
+
+---
+
+## 🧪 Testing
+
+* Unit tests (`go test ./...`)
+* Integration tests (with Cassandra via Docker Compose)
+* Race detector enabled (`go test -race`)
+* Mocked Cassandra interactions for fast unit test coverage
+
+---
+
+## 🐳 Docker
+
+* Multi-stage Dockerfile with `scratch` base for production
+* `docker-compose.yml` spins up app and Cassandra cluster
+* All configs externalized for portability
+
+---
+
+## 📦 Tech Stack
+
+* **Go** (standard library preferred)
+* **Cassandra/Scylla** for persistent analytics
+* **Docker** & **Docker Compose**
+* **JWT** for auth
+* **GitHub Actions** for CI/CD
+
+---
+
+## 🛠 Requirements
+
+* Go 1.21+
+* Docker + Docker Compose
+* GitHub account for publishing images (optional)
+
+---
+
+## 👤 Author
+Joshua Daniels 
