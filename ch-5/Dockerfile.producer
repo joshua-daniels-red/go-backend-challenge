@@ -1,0 +1,20 @@
+FROM golang:1.24.3-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o producer ./cmd/producer
+
+# Final stage
+FROM alpine:latest
+
+WORKDIR /app
+COPY --from=builder /app/producer .
+
+ENV REDPANDA_BROKER=redpanda:9092
+ENV WIKIPEDIA_STREAM_URL=https://stream.wikimedia.org/v2/stream/recentchange
+
+CMD ["./producer"]
