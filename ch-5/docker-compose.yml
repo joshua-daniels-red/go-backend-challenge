@@ -35,13 +35,17 @@ services:
 
   cassandra-init:
     image: cassandra:4.1
+    container_name: cassandra-init
     depends_on:
       cassandra:
         condition: service_healthy
     volumes:
-      - ./db/init.cql:/init.cql
-    entrypoint: /bin/sh
-    command: -c "echo 'Waiting for Cassandra...'; sleep 5; cqlsh cassandra -f /init.cql"
+      - ./db/init.cql:/init.cql:ro
+    #entrypoint: [ "sh", "-c", "sleep 10 && cqlsh cassandra -f /init.cql" ]
+    entrypoint: [ "sh", "-c", "echo '[INIT] Waiting...' && sleep 10 && echo '[INIT] Running schema...' && cqlsh cassandra -f /init.cql && echo '[INIT] ✅ Done'" ]
+
+    restart: "on-failure"
+
 
   producer-init:
     image: docker.redpanda.com/redpandadata/redpanda:latest
