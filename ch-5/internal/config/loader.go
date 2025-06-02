@@ -15,6 +15,7 @@ func Load() *Config {
 	cfg := &Config{
 		RedpandaBroker:     os.Getenv("REDPANDA_BROKER"),
 		WikipediaStreamURL: os.Getenv("WIKIPEDIA_STREAM_URL"),
+		Storage:            os.Getenv("STORAGE"),
 	}
 
 	if cfg.RedpandaBroker == "" {

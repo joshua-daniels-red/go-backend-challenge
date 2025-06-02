@@ -15,14 +15,12 @@ func NewCassandraStats(session *gocql.Session) *CassandraStats {
 }
 
 func (c *CassandraStats) Record(event Event) {
-	// Increment domain
 	if err := c.session.Query(`
 		UPDATE stats_by_domain SET count = count + 1 WHERE domain = ?
 	`, event.Domain).Exec(); err != nil {
 		log.Printf("failed to update stats_by_domain: %v", err)
 	}
 
-	// Increment user
 	if err := c.session.Query(`
 		UPDATE stats_by_user SET count = count + 1 WHERE user = ?
 	`, event.User).Exec(); err != nil {

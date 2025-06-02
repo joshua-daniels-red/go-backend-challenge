@@ -5,10 +5,10 @@ USE goanalytics;
 
 CREATE TABLE IF NOT EXISTS stats_by_domain (
     domain TEXT PRIMARY KEY,
-    count INT
+    count COUNTER
 );
 
 CREATE TABLE IF NOT EXISTS stats_by_user (
     user TEXT PRIMARY KEY,
-    count INT
+    count COUNTER
 );
