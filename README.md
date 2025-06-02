@@ -25,6 +25,7 @@ go-backend-challenge/
 ├── ch-2/          # Dockerized version of ch-1 with externalized configuration
 ├── ch-3/          # Adds streaming, Cassandra DB, and JWT-based authentication
 ├── ch-4/          # CI/CD pipeline: test, lint, docker build, publish
+├── ch-5/          # Producer/Consumer with Redpanda, full containerized workflow
 ├── go.mod
 ├── go.sum
 └── README.md      # This file
@@ -73,6 +74,41 @@ go-backend-challenge/
   * Building and pushing Docker image
 * Local CI simulation tested with [`nektos/act`](https://github.com/nektos/act)
 * Ensures standards compliance and publishing readiness
+
+### ✅ Chapter 5: Event Streaming with Redpanda
+
+* Splits application into:
+
+  * A **producer** that streams data from Wikimedia → Redpanda
+  * A **consumer** that reads from Redpanda and records statistics
+* Uses the `franz-go` client to produce/consume messages
+* Statistics are stored using pluggable backends (in-memory or Cassandra)
+* Both services are containerized:
+
+  * `Dockerfile.producer`
+  * `Dockerfile.consumer`
+* `docker-compose.yml` spins up:
+
+  * Redpanda
+  * Cassandra
+  * Producer and Consumer services
+* Tests and CI workflow added for `ch-5`, reusing existing practices
+* Includes `.env.example` for local dev:
+
+```
+REDPANDA_BROKER=redpanda:9092
+WIKIPEDIA_STREAM_URL=https://stream.wikimedia.org/v2/stream/recentchange
+STORAGE=cassandra
+JWT_SECRET=mysecretkey
+```
+
+To run:
+
+```bash
+docker compose up --build
+```
+
+Stats available at: `GET http://localhost:8080/stats`
 
 ---
 
@@ -129,4 +165,5 @@ go-backend-challenge/
 ---
 
 ## 👤 Author
-Joshua Daniels 
+
+Joshua Daniels
