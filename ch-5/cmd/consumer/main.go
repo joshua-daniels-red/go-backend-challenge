@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,77 +11,97 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-5/internal/config"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-5/internal/stream"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/gocql/gocql"
 )
 
 const topic = "wikipedia.changes"
 
+var (
+	configLoadFunc           = config.Load
+	newKafkaClientFunc       = kgo.NewClient
+	newCassandraSessionFn    = defaultCassandraSessionFn
+	streamWikipediaHandlerFn = http.ListenAndServe
+)
+
+type kafkaClient interface {
+	PollFetches(context.Context) kgo.Fetches
+	CommitRecords(context.Context, ...*kgo.Record)
+	Close()
+}
+
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("consumer error: %v", err)
+	}
+}
+
+func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go handleShutdown(cancel)
+	sigCh := make(chan os.Signal, 1)
+	go handleShutdown(cancel, sigCh)
 
-	cfg, err := config.Load()
+	cfg, err := configLoadFunc()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	log.Printf("Consumer connecting to broker: %s", cfg.RedpandaBroker)
-
-	client, err := kgo.NewClient(
+	client, err := newKafkaClientFunc(
 		kgo.SeedBrokers(cfg.RedpandaBroker),
 		kgo.ConsumeTopics(topic),
 		kgo.ConsumerGroup("wikipedia-consumer-group"),
-		kgo.MaxConcurrentFetches(5), // batch/fetch tuning
+		kgo.MaxConcurrentFetches(5),
 	)
 	if err != nil {
-		log.Fatalf("failed to create Redpanda client: %v", err)
+		return fmt.Errorf("failed to create Kafka client: %w", err)
 	}
-	defer func() {
-		log.Println("Flushing and closing Redpanda client...")
-		client.Close()
-	}()
+	defer client.Close()
 
 	var store stream.StatsStore
-
 	if cfg.Storage == "cassandra" {
-		cluster := gocql.NewCluster("cassandra")
-		cluster.Keyspace = "goanalytics"
-		cluster.Consistency = gocql.Quorum
-		cluster.ConnectTimeout = 5 * time.Second
-		session, err := cluster.CreateSession()
+		sess, err := newCassandraSessionFn()
 		if err != nil {
-			log.Fatalf("failed to connect to Cassandra: %v", err)
+			return fmt.Errorf("failed to connect to Cassandra: %w", err)
 		}
-		defer session.Close()
-		store = stream.NewCassandraStats(session)
+		defer sess.Close()
+		store = stream.NewCassandraStats(stream.NewCassandraSessionAdapter(sess))
 	} else {
 		store = stream.NewInMemoryStats()
 	}
 
-	go startHTTPServer(store)
+	go func() {
+		http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(store.GetSnapshot()); err != nil {
+				http.Error(w, "failed to encode stats", http.StatusInternalServerError)
+			}
+		})
+		log.Println("HTTP server listening on :8080")
+		if err := streamWikipediaHandlerFn(":8080", nil); err != nil {
+			log.Printf("HTTP server error: %v", err)
+		}
+	}()
 
 	log.Println("Consumer started. Waiting for messages...")
-
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("Shutting down consumer...")
-			return
+			return nil
 		default:
 			fetches := client.PollFetches(ctx)
 			fetches.EachPartition(func(p kgo.FetchTopicPartition) {
 				log.Printf("Fetched %d records from partition %s", len(p.Records), p.Topic)
 				for _, record := range p.Records {
-					var event stream.Event
-					if err := json.Unmarshal(record.Value, &event); err != nil {
-						log.Printf("failed to decode event: %v", err)
+					var e stream.Event
+					if err := json.Unmarshal(record.Value, &e); err != nil {
+						log.Printf("invalid record: %v", err)
 						continue
 					}
-					store.Record(event)
+					store.Record(e)
 				}
 				client.CommitRecords(ctx, p.Records...)
 			})
@@ -88,24 +109,15 @@ func main() {
 	}
 }
 
-func startHTTPServer(store stream.StatsStore) {
-	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		snapshot := store.GetSnapshot()
-		if err := json.NewEncoder(w).Encode(snapshot); err != nil {
-			http.Error(w, "failed to encode stats", http.StatusInternalServerError)
-		}
-	})
-
-	port := ":8080"
-	log.Printf("HTTP server listening on %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalf("HTTP server failed: %v", err)
-	}
+func defaultCassandraSessionFn() (*gocql.Session, error) {
+	cluster := gocql.NewCluster("cassandra")
+	cluster.Keyspace = "goanalytics"
+	cluster.Consistency = gocql.Quorum
+	cluster.ConnectTimeout = 5 * time.Second
+	return cluster.CreateSession()
 }
 
-func handleShutdown(cancel context.CancelFunc) {
-	sigCh := make(chan os.Signal, 1)
+func handleShutdown(cancel context.CancelFunc, sigCh chan os.Signal) {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 	cancel()
