@@ -71,7 +71,7 @@ func TestStreamWikipediaEvents_ProduceError(t *testing.T) {
 	}
 	eventJSON, _ := json.Marshal(event)
 
-ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "data: %s\n", eventJSON)
 	}))
 	defer ts.Close()

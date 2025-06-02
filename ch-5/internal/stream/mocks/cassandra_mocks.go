@@ -1,9 +1,9 @@
 package mocks
 
-import(
+import (
 	"errors"
 
- 	"github.com/joshua-daniels-red/go-backend-challenge/ch-5/internal/stream"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-5/internal/stream"
 )
 
 type MockQuery struct {
@@ -39,8 +39,8 @@ func (m *MockIter) Close() error {
 }
 
 type mockSession struct {
-	queryErr     bool
-	iter         stream.Iter
+	queryErr      bool
+	iter          stream.Iter
 	calledQueries []string
 }
 

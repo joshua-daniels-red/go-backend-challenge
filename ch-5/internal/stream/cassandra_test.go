@@ -103,7 +103,6 @@ func TestCassandraStats_Record_WithExecError(t *testing.T) {
 	stats.Record(event)
 }
 
-
 func TestCassandraStats_GetSnapshot_WithCloseError(t *testing.T) {
 	iter := &mockIter{
 		data: [][2]interface{}{

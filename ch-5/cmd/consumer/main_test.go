@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-5/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/gocql/gocql"
 )
 
 type mockKafkaClient struct {
@@ -26,12 +26,11 @@ func (m *mockKafkaClient) PollFetches(ctx context.Context) kgo.Fetches {
 	return kgo.Fetches{}
 }
 func (m *mockKafkaClient) CommitRecords(context.Context, ...*kgo.Record) {}
-func (m *mockKafkaClient) Close() {}
+func (m *mockKafkaClient) Close()                                        {}
 
 type mockCassandraSession struct{}
 
 func (m *mockCassandraSession) Close() {}
-
 
 func TestRun_ConfigFails(t *testing.T) {
 	configLoadFunc = func() (*config.Config, error) {
@@ -60,7 +59,6 @@ func TestRun_KafkaClientFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to create Kafka client")
 }
 
-
 func TestHandleShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
@@ -87,12 +85,11 @@ func TestRun_CassandraSessionFails(t *testing.T) {
 
 	newKafkaClientFunc = func(opts ...kgo.Opt) (*kgo.Client, error) {
 		return kgo.NewClient(
-			kgo.SeedBrokers("localhost:12345"),        // bogus broker
-			kgo.DialTimeout(10 * time.Millisecond),    // fail fast
-			kgo.ProducerLinger(5*time.Millisecond),    // fast retry config
+			kgo.SeedBrokers("localhost:12345"),     // bogus broker
+			kgo.DialTimeout(10*time.Millisecond),   // fail fast
+			kgo.ProducerLinger(5*time.Millisecond), // fast retry config
 		)
 	}
-
 
 	newCassandraSessionFn = func() (*gocql.Session, error) {
 		return nil, errors.New("cassandra boom")

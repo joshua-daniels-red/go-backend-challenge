@@ -8,7 +8,7 @@ import (
 type Config struct {
 	RedpandaBroker     string
 	WikipediaStreamURL string
-	Storage			   string
+	Storage            string
 }
 
 func Load() (*Config, error) {
@@ -27,4 +27,3 @@ func Load() (*Config, error) {
 
 	return cfg, nil
 }
-
