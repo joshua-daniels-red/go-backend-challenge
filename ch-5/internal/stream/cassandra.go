@@ -1,16 +1,29 @@
+// ✅ Refactored cassandra.go
 package stream
 
 import (
 	"log"
-
-	"github.com/gocql/gocql"
 )
 
-type CassandraStats struct {
-	session *gocql.Session
+type Session interface {
+	Query(stmt string, values ...interface{}) Query
 }
 
-func NewCassandraStats(session *gocql.Session) *CassandraStats {
+type Query interface {
+	Exec() error
+	Iter() Iter
+}
+
+type Iter interface {
+	Scan(dest ...interface{}) bool
+	Close() error
+}
+
+type CassandraStats struct {
+	session Session
+}
+
+func NewCassandraStats(session Session) *CassandraStats {
 	return &CassandraStats{session: session}
 }
 

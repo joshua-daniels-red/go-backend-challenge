@@ -25,7 +25,10 @@ func main() {
 
 	go handleShutdown(cancel)
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
 	log.Printf("Loaded REDPANDA_BROKER: %s", cfg.RedpandaBroker)
 
 	// Create Redpanda (Kafka-compatible) producer client

@@ -1,4 +1,3 @@
-// Updated consumer/main.go - Improved batch handling and clean shutdown flush
 package main
 
 import (
@@ -24,7 +23,11 @@ func main() {
 	defer cancel()
 	go handleShutdown(cancel)
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
 	log.Printf("Consumer connecting to broker: %s", cfg.RedpandaBroker)
 
 	client, err := kgo.NewClient(

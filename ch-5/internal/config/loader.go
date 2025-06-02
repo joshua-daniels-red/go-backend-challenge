@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
 )
 
@@ -11,7 +11,7 @@ type Config struct {
 	Storage			   string
 }
 
-func Load() *Config {
+func Load() (*Config, error) {
 	cfg := &Config{
 		RedpandaBroker:     os.Getenv("REDPANDA_BROKER"),
 		WikipediaStreamURL: os.Getenv("WIKIPEDIA_STREAM_URL"),
@@ -19,11 +19,12 @@ func Load() *Config {
 	}
 
 	if cfg.RedpandaBroker == "" {
-		log.Fatal("REDPANDA_BROKER must be set")
+		return nil, fmt.Errorf("REDPANDA_BROKER must be set")
 	}
 	if cfg.WikipediaStreamURL == "" {
 		cfg.WikipediaStreamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
 	}
 
-	return cfg
+	return cfg, nil
 }
+
