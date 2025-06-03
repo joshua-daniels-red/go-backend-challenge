@@ -99,7 +99,6 @@ go-backend-challenge/
 REDPANDA_BROKER=redpanda:9092
 WIKIPEDIA_STREAM_URL=https://stream.wikimedia.org/v2/stream/recentchange
 STORAGE=cassandra
-JWT_SECRET=mysecretkey
 ```
 
 To run:
