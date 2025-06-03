@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "ch-4/**"
-      - ".github/workflows/main.yml"  # Optional: include the workflow itself
+      - ".github/workflows/main.yml"
   pull_request:
     branches: [ "main" ]
     paths:
@@ -31,6 +31,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('ch-4/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Set up Go
         uses: actions/setup-go@v4
