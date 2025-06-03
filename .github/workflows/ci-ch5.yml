@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'ch-5/**'
+      - ".github/workflows/ci-ch5.yml"
   pull_request:
     paths:
       - 'ch-5/**'
+      - ".github/workflows/ci-ch5.yml"
 
 jobs:
   test-lint:
