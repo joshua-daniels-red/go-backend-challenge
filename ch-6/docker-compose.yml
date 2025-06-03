@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: ch-6_redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    command: >
+      redpanda start
+      --overprovisioned
+      --smp 1
+      --memory 512M
+      --reserve-memory 0M
+      --node-id 0
+      --check=false
+      --kafka-addr PLAINTEXT://0.0.0.0:9092
+      --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: ch-6_cassandra
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cassandra-init:
+    image: cassandra:4.1
+    container_name: ch-6_cassandra-init
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./db/init.cql:/init.cql:ro
+    entrypoint: [ "sh", "-c", "echo '[INIT] Waiting...' && sleep 10 && echo '[INIT] Running schema...' && cqlsh cassandra -f /init.cql && echo '[INIT] ✅ Done'" ]
+    restart: "on-failure"
+
+  producer-init:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: ch-6_producer-init
+    depends_on:
+      redpanda:
+        condition: service_started
+    env_file:
+      - .env
+    entrypoint: /bin/sh
+    command: >
+      -c "
+        echo '[INIT] Waiting for Redpanda...';
+        until rpk cluster info --brokers=redpanda:9092 > /dev/null 2>&1; do
+          echo '[INIT] Redpanda not ready yet...'; sleep 2;
+        done;
+
+        echo '[INIT] Creating topic $WIKIPEDIA_TOPIC...';
+        until rpk topic create $WIKIPEDIA_TOPIC --brokers=redpanda:9092 > /dev/null 2>&1; do
+          echo '[INIT] Retrying topic creation...'; sleep 2;
+        done;
+
+        echo '[INIT] ✅ Topic $WIKIPEDIA_TOPIC created!';
+      "
+
+  producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    depends_on:
+      redpanda:
+        condition: service_started
+      producer-init:
+        condition: service_completed_successfully
+      cassandra:
+        condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
+    restart: on-failure
+    env_file:
+      - .env
+
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    depends_on:
+      redpanda:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    env_file:
+      - .env
+
+volumes:
+  cassandra_data:
+  redpanda_data:

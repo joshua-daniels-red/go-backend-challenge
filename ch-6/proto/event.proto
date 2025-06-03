@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto;proto";
+
+message Event {
+  string domain = 1;
+  string title = 2;
+  string user = 3;
+}
