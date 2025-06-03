@@ -38,9 +38,10 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('ch-4/go.sum') }}
+          key: ${{ runner.os }}-go-ch4-${{ hashFiles('**/ch-4/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-
+            ${{ runner.os }}-go-ch4-
+
 
       - name: Set up Go
         uses: actions/setup-go@v4
