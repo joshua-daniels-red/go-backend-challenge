@@ -26,12 +26,6 @@ var (
 	streamWikipediaHandlerFn = http.ListenAndServe
 )
 
-type kafkaClient interface {
-	PollFetches(context.Context) kgo.Fetches
-	CommitRecords(context.Context, ...*kgo.Record)
-	Close()
-}
-
 func main() {
 	if err := run(); err != nil {
 		log.Fatalf("consumer error: %v", err)

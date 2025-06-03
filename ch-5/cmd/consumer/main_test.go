@@ -14,24 +14,6 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-type mockKafkaClient struct {
-	pollCount int
-}
-
-func (m *mockKafkaClient) PollFetches(ctx context.Context) kgo.Fetches {
-	m.pollCount++
-	if m.pollCount > 1 {
-		ctx.Done()
-	}
-	return kgo.Fetches{}
-}
-func (m *mockKafkaClient) CommitRecords(context.Context, ...*kgo.Record) {}
-func (m *mockKafkaClient) Close()                                        {}
-
-type mockCassandraSession struct{}
-
-func (m *mockCassandraSession) Close() {}
-
 func TestRun_ConfigFails(t *testing.T) {
 	configLoadFunc = func() (*config.Config, error) {
 		return nil, errors.New("config load failed")
