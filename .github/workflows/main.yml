@@ -1,10 +1,16 @@
-name: ci-cd-pipeline
+name: CI/CD - ch-4
 
 on:
-  pull_request:
-    branches: [ "main" ]
   push:
     branches: [ "main" ]
+    paths:
+      - "ch-4/**"
+      - ".github/workflows/main.yml"  # Optional: include the workflow itself
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "ch-4/**"
+      - ".github/workflows/main.yml"
 
 jobs:
   test:
