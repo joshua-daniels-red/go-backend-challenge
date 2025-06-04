@@ -16,11 +16,31 @@ import (
 
 type streamProducer interface {
 	Produce(ctx context.Context, record *kgo.Record, cb func(*kgo.Record, error))
-	Close()
+	ProduceSync(ctx context.Context, record *kgo.Record) error
 	Flush(ctx context.Context) error
+	Close()
 }
 
 
+type realKafkaClient struct {
+	*kgo.Client
+}
+
+func (r *realKafkaClient) Produce(ctx context.Context, record *kgo.Record, cb func(*kgo.Record, error)) {
+	r.Client.Produce(ctx, record, cb)
+}
+
+func (r *realKafkaClient) ProduceSync(ctx context.Context, record *kgo.Record) error {
+	return r.Client.ProduceSync(ctx, record).FirstErr()
+}
+
+func (r *realKafkaClient) Flush(ctx context.Context) error {
+	return r.Client.Flush(ctx)
+}
+
+func (r *realKafkaClient) Close() {
+	r.Client.Close()
+}
 
 var kafkaClientOverride streamProducer
 
@@ -35,13 +55,14 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 	if kafkaClientOverride != nil {
 		client = kafkaClientOverride
 	} else {
-		client, err = kgo.NewClient(
+		c, err := kgo.NewClient(
 			kgo.SeedBrokers(broker),
 			kgo.ProducerLinger(100*time.Millisecond),
 		)
 		if err != nil {
 			return err
 		}
+		client = &realKafkaClient{Client: c}
 	}
 	defer client.Close()
 
@@ -115,8 +136,7 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 			}
 
 			log.Printf("📦 Sending event to topic %s: %+v", topic, protoEvent)
-			realClient := client.(*kgo.Client)
-			err = realClient.ProduceSync(ctx, record).FirstErr()
+			err = client.ProduceSync(ctx, record)
 			if err != nil {
 				log.Printf("❌ Failed to produce message: %v", err)
 			} else {

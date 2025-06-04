@@ -29,6 +29,25 @@ func (m *mockProducer) Produce(_ context.Context, record *kgo.Record, _ func(*kg
 
 func (m *mockProducer) Close() {}
 
+func (m *mockProducer) Flush(_ context.Context) error {
+	return nil
+}
+
+func (m *mockProducerWithError) Flush(_ context.Context) error {
+	return nil
+}
+
+func (m *mockProducer) ProduceSync(_ context.Context, record *kgo.Record) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.produced = append(m.produced, record)
+	return nil
+}
+
+func (m *mockProducerWithError) ProduceSync(_ context.Context, _ *kgo.Record) error {
+	return errors.New("mock error")
+}
+
 type mockProducerWithError struct{}
 
 func (m *mockProducerWithError) Produce(_ context.Context, record *kgo.Record, cb func(*kgo.Record, error)) {
