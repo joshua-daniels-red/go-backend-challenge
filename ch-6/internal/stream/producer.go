@@ -10,26 +10,25 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
-    pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
+	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
 	"google.golang.org/protobuf/proto"
 )
 
-
-// streamProducer defines the minimal Kafka interface needed for testing
 type streamProducer interface {
 	Produce(ctx context.Context, record *kgo.Record, cb func(*kgo.Record, error))
 	Close()
+	Flush(ctx context.Context) error
 }
 
-// test hook override
+
+
 var kafkaClientOverride streamProducer
 
-// SetKafkaClientForTest allows test code to override the Kafka client
 func SetKafkaClientForTest(p streamProducer) {
 	kafkaClientOverride = p
 }
 
-func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL string,topic string) error {
+func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL string, topic string) error {
 	var client streamProducer
 	var err error
 
@@ -52,31 +51,32 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 	}
 	defer resp.Body.Close()
 
-	log.Println("Connected to Wikipedia stream. Streaming events...")
-
+	log.Println("🌐 Connected to Wikipedia stream. Streaming events...")
 	scanner := bufio.NewScanner(resp.Body)
-	log.Println("🟢 Scanner initialized, entering stream loop")
+
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
-			log.Println("Producer shutting down...")
+			log.Println("🛑 Context cancelled, flushing pending messages before shutdown...")
+			client.Flush(context.Background()) // flush with fresh context
+			log.Println("✅ Producer flushed and shutting down.")
 			return nil
 		default:
-			log.Println("🟡 Scanned a new line")
 			line := scanner.Text()
+
 			if !strings.HasPrefix(line, "data: ") {
 				continue
 			}
 
 			var raw map[string]interface{}
 			if err := json.Unmarshal([]byte(line[6:]), &raw); err != nil {
-				log.Printf("skipping malformed event: %v", err)
+				log.Printf("❌ Skipping malformed JSON event: %v", err)
 				continue
 			}
 
 			metaMap, ok := raw["meta"].(map[string]interface{})
 			if !ok {
-				log.Println("skipping event: missing meta")
+				log.Println("❌ Skipping event: missing 'meta' field")
 				continue
 			}
 
@@ -85,7 +85,9 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 			user, _ := raw["user"].(string)
 
 			if domain == "" || title == "" || user == "" {
-				log.Printf("❌ skipping event - missing field(s): domain='%s', title='%s', user='%s'", domain, title, user)
+				pretty, _ := json.MarshalIndent(raw, "", "  ")
+				log.Printf("❌ Skipping event - missing field(s): domain='%s', title='%s', user='%s'\n⚠️ Full event:\n%s",
+					domain, title, user, pretty)
 				continue
 			}
 
@@ -103,7 +105,7 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 
 			data, err := proto.Marshal(protoEvent)
 			if err != nil {
-				log.Printf("failed to marshal protobuf event: %v", err)
+				log.Printf("❌ Failed to marshal protobuf: %v", err)
 				continue
 			}
 
@@ -112,13 +114,16 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 				Value: data,
 			}
 
-			client.Produce(ctx, record, func(rec *kgo.Record, err error) {
-				if err != nil {
-					log.Printf("❌ failed to produce message: %v", err)
-				} else {
-					log.Printf("✅ produced message to topic %s [partition: %d]", rec.Topic, rec.Partition)
-				}
-			})
+			log.Printf("📦 Sending event to topic %s: %+v", topic, protoEvent)
+			realClient := client.(*kgo.Client)
+			err = realClient.ProduceSync(ctx, record).FirstErr()
+			if err != nil {
+				log.Printf("❌ Failed to produce message: %v", err)
+			} else {
+				log.Printf("✅ Produced message to topic %s", record.Topic)
+			}
+
+
 		}
 	}
 
