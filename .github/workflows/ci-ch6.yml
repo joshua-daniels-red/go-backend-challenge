@@ -29,8 +29,12 @@ jobs:
       with:
         go-version: 1.22
 
-    - name: Run Go tests
-      run: go test ./ch-6/... -v -cover
+    - name: Run unit tests with coverage
+      run: |
+            cd ch-6
+            go test ./... -coverprofile=coverage.out
+            go tool cover -func=coverage.out
+
 
     - name: Build Docker images
       run: docker-compose -f ch-6/docker-compose.yml build
