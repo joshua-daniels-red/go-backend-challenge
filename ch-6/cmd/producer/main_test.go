@@ -24,7 +24,7 @@ func TestRun_Success(t *testing.T) {
 			WikipediaTopic:     "test-topic",
 		}, nil
 	}
-	streamWikipediaEventsFunc = func(_ context.Context, _, _,_ string) error {
+	streamWikipediaEventsFunc = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
 
@@ -57,9 +57,10 @@ func TestRun_StreamFails(t *testing.T) {
 		return &config.Config{
 			RedpandaBroker:     "test-broker",
 			WikipediaStreamURL: "http://test-stream",
+			WikipediaTopic:     "test-topic",
 		}, nil
 	}
-	streamWikipediaEventsFunc = func(_ context.Context, _,_, _ string) error {
+	streamWikipediaEventsFunc = func(_ context.Context, _, _, _ string) error {
 		return errors.New("kafka error")
 	}
 
@@ -67,3 +68,4 @@ func TestRun_StreamFails(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "streaming failed")
 }
+
