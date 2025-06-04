@@ -2,99 +2,123 @@ name: CI/CD - ch-6
 
 on:
   push:
+    branches: [ "main" ]
     paths:
       - 'ch-6/**'
       - '.github/workflows/ci-ch6.yml'
   pull_request:
+    branches: [ "main" ]
     paths:
       - 'ch-6/**'
       - '.github/workflows/ci-ch6.yml'
 
 jobs:
-  test-build-push:
-    name: Test, Build, Push, Verify Observability
+  test-lint:
+    name: Test, Lint, Format
     runs-on: ubuntu-latest
-
-    services:
-      docker:
-        image: docker:24.0.5
-        options: --privileged
+    defaults:
+      run:
+        working-directory: ch-6
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.22
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
 
-    - name: Run unit tests with coverage
-      run: |
-            cd ch-6
-            go test ./... -coverprofile=coverage.out
-            go tool cover -func=coverage.out
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
+            sh -s -- -b $(go env GOPATH)/bin v1.54.2
 
+      - name: Run go vet
+        run: go vet ./...
 
-    - name: Build Docker images
-      run: docker-compose -f ch-6/docker-compose.yml build
+      - name: Check gofmt
+        run: |
+          test -z "$(gofmt -l .)" || (echo "Code not formatted" && exit 1)
 
-    - name: Start services
-      run: docker-compose -f ch-6/docker-compose.yml up -d
+      - name: Run unit tests with coverage
+        run: |
+          go test ./... -coverprofile=coverage.out
+          go tool cover -func=coverage.out
 
-    - name: Wait for /metrics endpoint
-      run: |
-        echo "Waiting for /metrics endpoint to be ready..."
-        for i in {1..30}; do
-          if curl -sSf http://localhost:8080/metrics > /dev/null; then
-            echo "✅ /metrics is up"
-            break
+  docker:
+    name: Build & Push Docker Images
+    needs: test-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ch-6
+
+    strategy:
+      matrix:
+        service: [consumer, producer]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Build and Push ${{ matrix.service }} Image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/ch6-${{ matrix.service }}:latest
+          DOCKERFILE=Dockerfile.${{ matrix.service }}
+          docker build -f $DOCKERFILE -t $IMAGE .
+          docker push $IMAGE
+
+  verify:
+    name: Integration Verification
+    needs: docker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ch-6
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Build Docker images
+        run: docker-compose -f ch-6/docker-compose.yml build
+
+      - name: Start services
+        run: docker-compose -f ch-6/docker-compose.yml up -d
+
+      - name: Wait for containers
+        run: sleep 20
+
+      - name: Verify /metrics endpoint
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/metrics)
+          if [ "$status" != "200" ]; then
+            echo "/metrics endpoint failed with status $status" && exit 1
           fi
-          echo "⏳ Waiting ($i/30)..."
-          sleep 2
-        done
 
-    - name: Display /metrics sample
-      run: curl -s http://localhost:8080/metrics | head -n 20
-
-    - name: Wait for Prometheus and Grafana
-      run: |
-        echo "Waiting for Prometheus..."
-        for i in {1..30}; do
-          if curl -sSf http://localhost:9090/-/healthy > /dev/null; then
-            echo "✅ Prometheus is healthy"
-            break
+      - name: Verify /stats endpoint
+        run: |
+          response=$(curl -s -w "%{http_code}" http://localhost:8080/stats)
+          code=${response: -3}
+          body=${response::-3}
+          if [ "$code" != "200" ]; then
+            echo "/stats endpoint failed with status $code" && exit 1
           fi
-          echo "⏳ Waiting for Prometheus ($i/30)..."
-          sleep 2
-        done
+          echo "$body" | jq . > /dev/null || (echo "Invalid JSON from /stats" && exit 1)
 
-        echo "Waiting for Grafana..."
-        for i in {1..30}; do
-          if curl -sSf http://localhost:3000/login > /dev/null; then
-            echo "✅ Grafana is responding"
-            break
-          fi
-          echo "⏳ Waiting for Grafana ($i/30)..."
-          sleep 2
-        done
-
-    - name: Log in to GHCR
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Push producer image to GHCR
-      run: |
-        docker tag ch-6_producer ghcr.io/${{ github.repository }}/ch-6-producer:latest
-        docker push ghcr.io/${{ github.repository }}/ch-6-producer:latest
-
-    - name: Push consumer image to GHCR
-      run: |
-        docker tag ch-6_consumer ghcr.io/${{ github.repository }}/ch-6-consumer:latest
-        docker push ghcr.io/${{ github.repository }}/ch-6-consumer:latest
-
-    - name: Tear down services
-      run: docker-compose -f ch-6/docker-compose.yml down -v
+      - name: Tear down services
+        if: always()
+        run: docker-compose -f ch-6/docker-compose.yml down
