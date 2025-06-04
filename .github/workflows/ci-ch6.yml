@@ -121,4 +121,4 @@ jobs:
 
       - name: Tear down services
         if: always()
-        run: docker-compose -f ch-6/docker-compose.yml down
+        run: docker-compose -f docker-compose.yml down
