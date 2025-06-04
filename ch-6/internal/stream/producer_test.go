@@ -75,7 +75,7 @@ func TestStreamWikipediaEvents_Success(t *testing.T) {
 
 	mock := &mockProducer{}
 	stream.SetKafkaClientForTest(mock)
-	err := stream.StreamWikipediaEvents(ctx, "broker", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "broker", ts.URL, "test.topic")
 	assert.NoError(t, err)
 	assert.Len(t, mock.produced, 1)
 }
@@ -99,7 +99,7 @@ func TestStreamWikipediaEvents_ProduceError(t *testing.T) {
 	defer cancel()
 
 	stream.SetKafkaClientForTest(&mockProducerWithError{})
-	err := stream.StreamWikipediaEvents(ctx, "broker", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "broker", ts.URL, "test.topic")
 	assert.NoError(t, err)
 }
 
@@ -113,7 +113,7 @@ func TestStreamWikipediaEvents_MalformedJSON(t *testing.T) {
 	defer cancel()
 
 	stream.SetKafkaClientForTest(&mockProducer{})
-	err := stream.StreamWikipediaEvents(ctx, "fake", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "fake", ts.URL, "test.topic")
 	assert.NoError(t, err)
 }
 
@@ -121,7 +121,7 @@ func TestStreamWikipediaEvents_BadConnection(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	err := stream.StreamWikipediaEvents(ctx, "fake", "http://127.0.0.1:0","test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "fake", "http://127.0.0.1:0", "test.topic")
 	assert.Error(t, err)
 }
 
@@ -136,7 +136,7 @@ func TestStreamWikipediaEvents_GracefulShutdown(t *testing.T) {
 	stream.SetKafkaClientForTest(&mockProducer{})
 	cancel()
 
-	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL, "test.topic")
 	assert.NoError(t, err)
 }
 
@@ -154,7 +154,7 @@ func TestStreamWikipediaEvents_ShutdownMidScan(t *testing.T) {
 	defer ts.Close()
 
 	stream.SetKafkaClientForTest(&mockProducer{})
-	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL, "test.topic")
 	assert.NoError(t, err)
 }
 
@@ -172,7 +172,7 @@ func TestStreamWikipediaEvents_MissingMeta(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	stream.SetKafkaClientForTest(&mockProducer{})
-	_ = stream.StreamWikipediaEvents(ctx, "unused", ts.URL,"test.topic")
+	_ = stream.StreamWikipediaEvents(ctx, "unused", ts.URL, "test.topic")
 }
 
 func TestStreamWikipediaEvents_IncompleteFields(t *testing.T) {
@@ -189,7 +189,7 @@ func TestStreamWikipediaEvents_IncompleteFields(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	stream.SetKafkaClientForTest(&mockProducer{})
-	_ = stream.StreamWikipediaEvents(ctx, "unused", ts.URL,"test.topic")
+	_ = stream.StreamWikipediaEvents(ctx, "unused", ts.URL, "test.topic")
 }
 
 type errReader struct{}
@@ -222,7 +222,7 @@ func TestStreamWikipediaEvents_ScannerError(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	stream.SetKafkaClientForTest(&mockProducer{})
-	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL,"test.topic")
+	err := stream.StreamWikipediaEvents(ctx, "unused", ts.URL, "test.topic")
 	assert.NoError(t, err)
 }
 

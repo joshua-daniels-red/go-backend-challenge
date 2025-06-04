@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/twmb/franz-go/pkg/kgo"
 	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -20,7 +20,6 @@ type streamProducer interface {
 	Flush(ctx context.Context) error
 	Close()
 }
-
 
 type realKafkaClient struct {
 	*kgo.Client
@@ -142,7 +141,6 @@ func StreamWikipediaEvents(ctx context.Context, broker string, wikipediaURL stri
 			} else {
 				log.Printf("✅ Produced message to topic %s", record.Topic)
 			}
-
 
 		}
 	}

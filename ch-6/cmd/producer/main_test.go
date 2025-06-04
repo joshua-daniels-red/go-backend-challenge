@@ -68,4 +68,3 @@ func TestRun_StreamFails(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "streaming failed")
 }
-

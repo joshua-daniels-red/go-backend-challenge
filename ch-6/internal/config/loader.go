@@ -17,7 +17,7 @@ func Load() (*Config, error) {
 		RedpandaBroker:     os.Getenv("REDPANDA_BROKER"),
 		WikipediaStreamURL: os.Getenv("WIKIPEDIA_STREAM_URL"),
 		Storage:            os.Getenv("STORAGE"),
-		WikipediaTopic: 	os.Getenv("WIKIPEDIA_TOPIC"),
+		WikipediaTopic:     os.Getenv("WIKIPEDIA_TOPIC"),
 	}
 
 	if cfg.RedpandaBroker == "" {
@@ -30,7 +30,6 @@ func Load() (*Config, error) {
 	if cfg.WikipediaTopic == "" {
 		cfg.WikipediaTopic = "wikipedia.changes"
 	}
-
 
 	return cfg, nil
 }

@@ -14,9 +14,9 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
+	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/twmb/franz-go/pkg/kgo"
-	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
 	"google.golang.org/protobuf/proto"
 )
 
