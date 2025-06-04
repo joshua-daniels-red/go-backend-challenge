@@ -94,10 +94,10 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
 
       - name: Build Docker images
-        run: docker-compose -f ch-6/docker-compose.yml build
+        run: docker-compose -f docker-compose.yml build
 
       - name: Start services
-        run: docker-compose -f ch-6/docker-compose.yml up -d
+        run: docker-compose -f docker-compose.yml up -d
 
       - name: Wait for containers
         run: sleep 20
