@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -35,7 +37,14 @@ func run() error {
 
 	log.Printf("📥 PRODUCER TOPIC: %s", cfg.WikipediaTopic)
 
-	if err := streamWikipediaEventsFunc(ctx, cfg.RedpandaBroker, cfg.WikipediaStreamURL,cfg.WikipediaTopic); err != nil {
+	stream.RegisterMetrics()
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println("Prometheus metrics available at :2112/metrics")
+		http.ListenAndServe(":2112", nil)
+	}()
+
+	if err := streamWikipediaEventsFunc(ctx, cfg.RedpandaBroker, cfg.WikipediaStreamURL, cfg.WikipediaTopic); err != nil {
 		return fmt.Errorf("streaming failed: %w", err)
 	}
 

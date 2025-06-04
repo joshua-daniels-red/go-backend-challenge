@@ -14,11 +14,11 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/twmb/franz-go/pkg/kgo"
 	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
 	"google.golang.org/protobuf/proto"
 )
-
 
 var (
 	configLoadFunc           = config.Load
@@ -69,6 +69,15 @@ func run() error {
 		store = stream.NewInMemoryStats()
 	}
 
+	// Register Prometheus metrics
+	stream.RegisterMetrics()
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println("📊 Prometheus metrics available at :2112/metrics")
+		log.Fatal(http.ListenAndServe(":2112", nil))
+	}()
+
+	// Stats endpoint
 	go func() {
 		http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -96,6 +105,7 @@ func run() error {
 					var protoEvent pb.Event
 					if err := proto.Unmarshal(record.Value, &protoEvent); err != nil {
 						log.Printf("invalid protobuf record: %v", err)
+						stream.EventsFailedToProcess.Inc()
 						continue
 					}
 
@@ -106,12 +116,13 @@ func run() error {
 					}
 
 					store.Record(e)
+					stream.EventsConsumedFromRedpanda.Inc()
 				}
 				client.CommitRecords(ctx, p.Records...)
+				stream.EventsProcessedSuccessfully.Inc()
 			})
 		}
 	}
-
 }
 
 func defaultCassandraSessionFn() (*gocql.Session, error) {
