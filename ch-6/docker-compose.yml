@@ -124,6 +124,9 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/provisioning/dashboards/definitions:/etc/grafana/provisioning/dashboards/definitions
 
 volumes:
   cassandra_data:
