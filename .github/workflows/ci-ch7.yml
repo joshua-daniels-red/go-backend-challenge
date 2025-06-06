@@ -1,0 +1,122 @@
+name: CI/CD - ch-7
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'ch-7/**'
+      - '.github/workflows/ci-ch7.yml'
+  pull_request:
+    branches: ["main"]
+    paths:
+      - 'ch-7/**'
+      - '.github/workflows/ci-ch7.yml'
+
+jobs:
+  test-lint:
+    name: Test, Lint, Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ch-7
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
+            sh -s -- -b $(go env GOPATH)/bin v1.54.2
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Check gofmt
+        run: |
+          test -z "$(gofmt -l .)" || (echo "Code not formatted" && exit 1)
+
+      - name: Run unit tests with race detector
+        run: go test -race ./... -coverprofile=coverage.out
+
+  docker:
+    name: Build & Push Docker Images
+    needs: test-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ch-7
+
+    strategy:
+      matrix:
+        service: [consumer, producer]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CR_PAT }}
+
+      - name: Build and Push ${{ matrix.service }} Image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/ch7-${{ matrix.service }}:latest
+          DOCKERFILE=Dockerfile.${{ matrix.service }}
+          docker build -f $DOCKERFILE -t $IMAGE .
+          docker push $IMAGE
+
+  verify:
+    name: Integration Verification
+    needs: docker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ch-7
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Build Docker images
+        run: docker-compose -f docker-compose.yml build
+
+      - name: Start services
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Wait for containers
+        run: sleep 20
+
+      - name: Verify /metrics endpoint
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/metrics)
+          if [ "$status" != "200" ]; then
+            echo "/metrics endpoint failed with status $status" && exit 1
+          fi
+
+      - name: Verify /stats endpoint
+        run: |
+          response=$(curl -s -w "%{http_code}" http://localhost:8080/stats)
+          code=${response: -3}
+          body=${response::-3}
+          if [ "$code" != "200" ]; then
+            echo "/stats endpoint failed with status $code" && exit 1
+          fi
+          echo "$body" | jq . > /dev/null || (echo "Invalid JSON from /stats" && exit 1)
+
+      - name: Tear down services
+        if: always()
+        run: docker-compose -f docker-compose.yml down
