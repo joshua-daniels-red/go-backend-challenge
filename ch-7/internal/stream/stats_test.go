@@ -1,8 +1,8 @@
 package stream_test
 
 import (
-	"testing"
 	"sync"
+	"testing"
 
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/stream"
 	"github.com/stretchr/testify/assert"

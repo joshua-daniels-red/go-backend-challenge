@@ -1,4 +1,3 @@
-
 package stream
 
 import (
@@ -56,7 +55,6 @@ func (c *CassandraStats) RecordMany(events []Event) {
 		}
 	}
 }
-
 
 func (c *CassandraStats) GetSnapshot() StatsSnapshot {
 	snapshot := StatsSnapshot{

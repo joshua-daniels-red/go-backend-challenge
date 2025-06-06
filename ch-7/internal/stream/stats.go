@@ -48,7 +48,6 @@ func (s *InMemoryStats) RecordMany(events []Event) {
 	}
 }
 
-
 func (s *InMemoryStats) GetSnapshot() StatsSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

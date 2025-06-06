@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
 
 	"github.com/gocql/gocql"
 	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/config"
@@ -153,7 +153,6 @@ func runConsumerLoop(ctx context.Context, client *kgo.Client, store stream.Stats
 		}
 	}
 }
-
 
 func defaultCassandraSessionFn() (*gocql.Session, error) {
 	cluster := gocql.NewCluster("cassandra")

@@ -7,8 +7,8 @@ import (
 )
 
 type Batcher struct {
-	store        StatsStore
-	batchSize    int
+	store         StatsStore
+	batchSize     int
 	flushInterval time.Duration
 
 	mu      sync.Mutex
@@ -78,7 +78,6 @@ func (b *Batcher) flush() []Event {
 
 	return toFlush
 }
-
 
 func (b *Batcher) Stop() {
 	b.ticker.Stop()
