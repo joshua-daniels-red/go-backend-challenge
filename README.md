@@ -12,8 +12,10 @@ The goal is to incrementally develop a backend service that:
 * Consumes Wikimedia's RecentChange stream
 * Processes and aggregates streaming data
 * Exposes in-memory and persistent statistics endpoints
-* Supports JWT-based authentication
-* Is containerized and CI/CD ready
+* Supports JWT-based authentication (Ch 3)
+* Uses protobuf for structured messaging (Ch 6)
+* Supports Prometheus + Grafana observability (Ch 6)
+* Is containerized, concurrent, and CI/CD ready (Ch 4, 7)
 
 ---
 
@@ -26,6 +28,8 @@ go-backend-challenge/
 ├── ch-3/          # Adds streaming, Cassandra DB, and JWT-based authentication
 ├── ch-4/          # CI/CD pipeline: test, lint, docker build, publish
 ├── ch-5/          # Producer/Consumer with Redpanda, full containerized workflow
+├── ch-6/          # Protobuf serialization and Prometheus/Grafana observability
+├── ch-7/          # Multi-threaded consumers with batched writes and race-safety
 ├── go.mod
 ├── go.sum
 └── README.md      # This file
@@ -109,6 +113,31 @@ docker compose up --build
 
 Stats available at: `GET http://localhost:8080/stats`
 
+### ✅ Chapter 6: Protobuf & Observability
+
+* Introduces `protobuf` for efficient message serialization
+* Adds `.proto` schema + generated Go code for type-safe event encoding
+* Redpanda messages are now serialized using protobuf
+* Adds Prometheus metrics collection:
+
+  * Total events consumed
+  * Events persisted, succeeded, failed
+* Adds Grafana dashboard with preconfigured panels
+* Metrics exposed at: `GET /metrics`
+* CI updated to include `/metrics` verification
+
+### ✅ Chapter 7: Multi-Threaded Consumers & Batching
+
+* Consumer now supports multiple concurrent workers using goroutines
+* Shared store access with race-safe logic (`sync.Mutex` and `-race` tested)
+* Adds batching layer:
+
+  * Events are buffered and flushed to Cassandra/in-memory storage
+  * Flush occurs by size threshold or time interval
+* Kafka offsets are committed **only after** successful batch flush
+* Prevents message loss mid-batch
+* Pipeline updated to dynamically create `.env`, run end-to-end services, and validate `/stats` + `/metrics`
+
 ---
 
 ## 📊 Statistics Endpoint (`/stats`)
@@ -128,7 +157,7 @@ Stats available at: `GET http://localhost:8080/stats`
 
 ---
 
-## 🧪 Testing
+## 🥯 Testing
 
 * Unit tests (`go test ./...`)
 * Integration tests (with Cassandra via Docker Compose)
@@ -151,11 +180,14 @@ Stats available at: `GET http://localhost:8080/stats`
 * **Cassandra/Scylla** for persistent analytics
 * **Docker** & **Docker Compose**
 * **JWT** for auth
+* **Protobuf** for message encoding
+* **Redpanda** for streaming
+* **Prometheus + Grafana** for observability
 * **GitHub Actions** for CI/CD
 
 ---
 
-## 🛠 Requirements
+## 🛠️ Requirements
 
 * Go 1.21+
 * Docker + Docker Compose
