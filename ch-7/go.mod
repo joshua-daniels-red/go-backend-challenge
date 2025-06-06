@@ -1,4 +1,4 @@
-module github.com/joshua-daniels-red/go-backend-challenge/ch-6
+module github.com/joshua-daniels-red/go-backend-challenge/ch-7
 
 go 1.24.3
 

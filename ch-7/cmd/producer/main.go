@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/config"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/stream"
 )
 
 var (

@@ -3,7 +3,7 @@ package stream_test
 import (
 	"testing"
 
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/stream"
 	"github.com/stretchr/testify/assert"
 )
 

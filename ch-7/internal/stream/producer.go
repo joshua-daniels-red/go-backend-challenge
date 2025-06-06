@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
+	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-7/proto"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
 )

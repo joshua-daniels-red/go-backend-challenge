@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 

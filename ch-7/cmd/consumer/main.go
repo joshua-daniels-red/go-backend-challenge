@@ -10,11 +10,12 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"sync"
 
 	"github.com/gocql/gocql"
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/config"
-	"github.com/joshua-daniels-red/go-backend-challenge/ch-6/internal/stream"
-	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-6/proto"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/config"
+	"github.com/joshua-daniels-red/go-backend-challenge/ch-7/internal/stream"
+	pb "github.com/joshua-daniels-red/go-backend-challenge/ch-7/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/protobuf/proto"
@@ -36,6 +37,7 @@ func main() {
 func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	sigCh := make(chan os.Signal, 1)
 	go handleShutdown(cancel, sigCh)
 
@@ -91,20 +93,41 @@ func run() error {
 		}
 	}()
 
-	log.Println("Consumer started. Waiting for messages...")
+	// Multithreaded Kafka consumers
+	numWorkers := 3 // or get from os.Getenv("NUM_CONSUMERS")
+	var wg sync.WaitGroup
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			log.Printf("🧵 Worker %d started", id)
+			runConsumerLoop(ctx, client, store)
+			log.Printf("🧵 Worker %d exited", id)
+		}(i + 1)
+	}
+
+	wg.Wait()
+	log.Println("All workers shut down gracefully")
+	return nil
+}
+
+func runConsumerLoop(ctx context.Context, client *kgo.Client, store stream.StatsStore) {
+	batcher := stream.NewBatcher(store, 20, 5*time.Second)
+	batcher.Start(ctx)
+	defer batcher.Stop()
+
+	var uncommitted []*kgo.Record
+
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Shutting down consumer...")
-			return nil
+			return
 		default:
 			fetches := client.PollFetches(ctx)
 			fetches.EachPartition(func(p kgo.FetchTopicPartition) {
-				log.Printf("Fetched %d records from partition %s", len(p.Records), p.Topic)
 				for _, record := range p.Records {
 					var protoEvent pb.Event
 					if err := proto.Unmarshal(record.Value, &protoEvent); err != nil {
-						log.Printf("invalid protobuf record: %v", err)
 						stream.EventsFailedToProcess.Inc()
 						continue
 					}
@@ -115,15 +138,22 @@ func run() error {
 						User:   protoEvent.GetUser(),
 					}
 
-					store.Record(e)
+					batcher.Add(e)
+					uncommitted = append(uncommitted, record)
 					stream.EventsConsumedFromRedpanda.Inc()
 				}
-				client.CommitRecords(ctx, p.Records...)
-				stream.EventsProcessedSuccessfully.Inc()
+
+				// If we flushed, commit those records
+				if flushed := batcher.FlushIfThresholdMet(); len(flushed) > 0 {
+					client.CommitRecords(ctx, uncommitted...)
+					uncommitted = nil
+					stream.EventsProcessedSuccessfully.Inc()
+				}
 			})
 		}
 	}
 }
+
 
 func defaultCassandraSessionFn() (*gocql.Session, error) {
 	cluster := gocql.NewCluster("cassandra")

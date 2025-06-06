@@ -13,6 +13,7 @@ type StatsSnapshot struct {
 // StatsStore defines an interface for tracking and retrieving stats
 type StatsStore interface {
 	Record(event Event)
+	RecordMany([]Event)
 	GetSnapshot() StatsSnapshot
 }
 
@@ -36,6 +37,17 @@ func (s *InMemoryStats) Record(event Event) {
 	s.domainCt[event.Domain]++
 	s.userCt[event.User]++
 }
+
+func (s *InMemoryStats) RecordMany(events []Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, event := range events {
+		s.domainCt[event.Domain]++
+		s.userCt[event.User]++
+	}
+}
+
 
 func (s *InMemoryStats) GetSnapshot() StatsSnapshot {
 	s.mu.RLock()

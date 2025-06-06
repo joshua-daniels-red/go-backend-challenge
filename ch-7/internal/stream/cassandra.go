@@ -1,4 +1,4 @@
-// ✅ Refactored cassandra.go
+
 package stream
 
 import (
@@ -40,6 +40,23 @@ func (c *CassandraStats) Record(event Event) {
 		log.Printf("failed to update stats_by_user: %v", err)
 	}
 }
+
+func (c *CassandraStats) RecordMany(events []Event) {
+	for _, event := range events {
+		if err := c.session.Query(`
+			UPDATE stats_by_domain SET count = count + 1 WHERE domain = ?
+		`, event.Domain).Exec(); err != nil {
+			log.Printf("failed to update stats_by_domain: %v", err)
+		}
+
+		if err := c.session.Query(`
+			UPDATE stats_by_user SET count = count + 1 WHERE user = ?
+		`, event.User).Exec(); err != nil {
+			log.Printf("failed to update stats_by_user: %v", err)
+		}
+	}
+}
+
 
 func (c *CassandraStats) GetSnapshot() StatsSnapshot {
 	snapshot := StatsSnapshot{
