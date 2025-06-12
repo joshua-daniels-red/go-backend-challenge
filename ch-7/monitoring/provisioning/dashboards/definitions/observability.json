@@ -24,10 +24,7 @@
   },
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "aenyxa9zvco3kd"
-      },
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -130,10 +127,7 @@
       "pluginVersion": "12.0.1",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "aenyxa9zvco3kd"
-          },
+          "datasource": "Prometheus",
           "editorMode": "code",
           "expr": "rate(events_consumed_from_stream_total[$__rate_interval])",
           "legendFormat": "__auto",
@@ -141,10 +135,7 @@
           "refId": "Events Consumed from Stream"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "aenyxa9zvco3kd"
-          },
+          "datasource": "Prometheus",
           "editorMode": "code",
           "expr": "rate(events_produced_to_redpanda_total[$__rate_interval])",
           "hide": false,
@@ -154,10 +145,7 @@
           "refId": "Events Produced to Redpanda"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "aenyxa9zvco3kd"
-          },
+          "datasource": "Prometheus",
           "editorMode": "code",
           "expr": "rate(events_consumed_from_redpanda_total[$__rate_interval])",
           "hide": false,
@@ -167,10 +155,7 @@
           "refId": "Events Consumed from Redpanda"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "aenyxa9zvco3kd"
-          },
+          "datasource": "Prometheus",
           "editorMode": "code",
           "expr": "rate(events_processed_successfully_total[$__rate_interval])",
           "hide": false,
@@ -180,10 +165,7 @@
           "refId": "Events Processed Successfully"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "aenyxa9zvco3kd"
-          },
+          "datasource": "Prometheus",
           "editorMode": "code",
           "expr": "rate(events_failed_to_process_total[$__rate_interval])",
           "hide": false,

@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cassandra-init
+spec:
+  template:
+    spec:
+      containers:
+        - name: cassandra-init
+          image: cassandra:4.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo '[INIT] Waiting for Cassandra...';
+              sleep 10;
+              echo '[INIT] Applying schema...';
+              cqlsh cassandra -f /init.cql;
+              echo '[INIT] ✅ Done!';
+          volumeMounts:
+            - name: init-cql
+              mountPath: /init.cql
+              subPath: init.cql
+      restartPolicy: OnFailure
+      volumes:
+        - name: init-cql
+          configMap:
+            name: cassandra-schema
