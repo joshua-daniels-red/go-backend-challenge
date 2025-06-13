@@ -13,7 +13,6 @@ This chapter containerizes and deploys all components of the analytics system in
 * ✅ **Prometheus** (for metrics scraping)
 * ✅ **Grafana** (for observability dashboards)
 * ✅ **Schema Initializers**:
-
   * Cassandra keyspace + tables
   * Redpanda topic (`wikipedia.protobuf`)
 
@@ -116,6 +115,19 @@ Log in with:
 
 ---
 
+## 🤖 CI/CD Integration
+
+Chapter 8 includes a dedicated CI pipeline using **GitHub Actions** and a **KinD (Kubernetes-in-Docker)** cluster. This allows for full validation of:
+
+* Docker builds of the producer and consumer apps
+* Cluster setup via `setup.sh`
+* Integration tests hitting `/metrics` and `/stats`
+* Full teardown using `teardown.sh`
+
+The pipeline ensures your Kubernetes configuration and deployments remain healthy and verifiable on every push.
+
+---
+
 ## 📦 Project Structure (Kubernetes)
 
 ```
@@ -134,6 +146,7 @@ ch-8/
 ├── monitoring/                  # Dashboard + Prometheus config
 ├── setup.sh                     # Run-all setup script
 ├── teardown.sh                  # Wipes all Kubernetes resources
+├── .github/workflows/ci-ch8.yml# CI pipeline definition
 ```
 
 ---
@@ -157,4 +170,4 @@ This removes:
 
 ## ✅ Status
 
-All services are deployed, connected, and observable within Kubernetes. This chapter completes the infrastructure transformation of the project, and the entire stack can now be managed through `setup.sh` and `minikube service` commands for full local orchestration.
+All services are deployed, connected, and observable within Kubernetes. This chapter completes the infrastructure transformation of the project, and the entire stack can now be managed through `setup.sh`, tested through CI with KinD, and accessed via `minikube service` commands for full local orchestration.
