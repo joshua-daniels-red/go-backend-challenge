@@ -58,35 +58,61 @@ This script ensures proper initialization order:
 * Redpanda is ready before the topic init and producer
 * Dashboards and data sources are provisioned for Grafana
 
----
+After this script completes, **all pods and services will be running**, including:
 
-## 🔎 Observability
-
-### Port-forward Prometheus:
-
-```bash
-kubectl port-forward svc/prometheus 9090:9090
-```
-
-→ [http://localhost:9090](http://localhost:9090)
+* Working `/stats` endpoint on the Consumer
+* Writing events to Cassandra
+* Populated Grafana dashboards
 
 ---
 
-### Port-forward Grafana:
+## 🔎 Accessing Services
+
+Since this setup is local, services are exposed using **`NodePort`** and can be reached using the Minikube IP. You can run:
 
 ```bash
-kubectl port-forward svc/grafana 3000:3000
+minikube service list
 ```
 
-→ [http://localhost:3000](http://localhost:3000)
-Login: `admin` / `admin`
+Or directly open in browser:
 
-You'll find a pre-provisioned dashboard under **"Observability Dashboard"** visualizing:
+```bash
+minikube service grafana
+minikube service prometheus
+minikube service consumer
+```
+
+You can also retrieve the IP manually:
+
+```bash
+minikube ip
+```
+
+Then access services via:
+
+* Grafana:     `http://<minikube-ip>:30300`
+* Prometheus:  `http://<minikube-ip>:30900`
+* Consumer:    `http://<minikube-ip>:30080/stats`
+
+---
+
+## 📊 Observability Dashboard
+
+Grafana is provisioned with a full dashboard under:
+
+> **"Observability Dashboard"**
+
+It visualizes:
 
 * Events produced to Redpanda
 * Events consumed from Redpanda
 * Events processed successfully / failed
 * Stream input rates
+
+Log in with:
+
+* **Username**: `admin`
+* **Password**: `admin`
 
 ---
 
@@ -104,31 +130,31 @@ ch-8/
 │   ├── consumer/                # Consumer Deployment + Service
 │   ├── prometheus/              # Prometheus config + deployment
 │   └── grafana/                 # Grafana dashboards + data sources
+├── db/init.cql                  # Cassandra schema file
+├── monitoring/                  # Dashboard + Prometheus config
 ├── setup.sh                     # Run-all setup script
+├── teardown.sh                  # Wipes all Kubernetes resources
 ```
 
 ---
 
-## 📌 Notes
+## 📌 Teardown
 
-* Prometheus scrapes `/metrics` from both `producer` and `consumer`
-* Cassandra stores domain and user stats in `goanalytics` keyspace
-* Dashboard provisioning requires correct datasource names (`Prometheus`)
-* All resources are provisioned using `kubectl apply`, no Helm
-
----
-
-## ✅ Teardown
-
-To remove everything:
+To clean up everything:
 
 ```bash
-kubectl delete -f k8s/
-kubectl delete pvc --all
+chmod +x teardown.sh
+./teardown.sh
 ```
+
+This removes:
+
+* All Kubernetes resources (`kubectl delete -f k8s/`)
+* Any persistent volumes (`kubectl delete pvc --all`)
+* Associated ConfigMaps
 
 ---
 
 ## ✅ Status
 
-All services are deployed and observable within Kubernetes. This chapter completes the infrastructure transformation of the project.
+All services are deployed, connected, and observable within Kubernetes. This chapter completes the infrastructure transformation of the project, and the entire stack can now be managed through `setup.sh` and `minikube service` commands for full local orchestration.
