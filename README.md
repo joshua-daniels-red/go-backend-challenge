@@ -16,6 +16,7 @@ The goal is to incrementally develop a backend service that:
 * Uses protobuf for structured messaging (Ch 6)
 * Supports Prometheus + Grafana observability (Ch 6)
 * Is containerized, concurrent, and CI/CD ready (Ch 4, 7)
+* Deploys to Kubernetes with CI/CD verification (Ch 8)
 
 ---
 
@@ -30,6 +31,7 @@ go-backend-challenge/
 ├── ch-5/          # Producer/Consumer with Redpanda, full containerized workflow
 ├── ch-6/          # Protobuf serialization and Prometheus/Grafana observability
 ├── ch-7/          # Multi-threaded consumers with batched writes and race-safety
+├── ch-8/          # Full Kubernetes deployment with CI/CD verification
 ├── go.mod
 ├── go.sum
 └── README.md      # This file
@@ -138,6 +140,19 @@ Stats available at: `GET http://localhost:8080/stats`
 * Prevents message loss mid-batch
 * Pipeline updated to dynamically create `.env`, run end-to-end services, and validate `/stats` + `/metrics`
 
+### ✅ Chapter 8: Kubernetes Deployment & CI/CD
+
+* Deploys all components (Cassandra, Redpanda, Producer, Consumer, Prometheus, Grafana) into Kubernetes using Minikube
+* Fully automated `setup.sh` brings the cluster online with working endpoints and observability
+* Services are accessible using `minikube service` or Minikube IP + NodePort
+* Pre-provisioned Grafana dashboard available at `http://<minikube-ip>:30300`
+* CI/CD pipeline uses **KinD** in GitHub Actions to:
+  * Build Docker images
+  * Spin up Kubernetes cluster
+  * Apply manifests
+  * Verify `/stats` and `/metrics` endpoints
+* Teardown script (`teardown.sh`) deletes all resources and persistent volumes
+
 ---
 
 ## 📊 Statistics Endpoint (`/stats`)
@@ -184,6 +199,8 @@ Stats available at: `GET http://localhost:8080/stats`
 * **Redpanda** for streaming
 * **Prometheus + Grafana** for observability
 * **GitHub Actions** for CI/CD
+* **Kubernetes + Minikube** for orchestration
+* **KinD** for CI-based Kubernetes cluster testing
 
 ---
 
@@ -191,6 +208,7 @@ Stats available at: `GET http://localhost:8080/stats`
 
 * Go 1.21+
 * Docker + Docker Compose
+* Minikube or KinD for local/CI Kubernetes deployment
 * GitHub account for publishing images (optional)
 
 ---
