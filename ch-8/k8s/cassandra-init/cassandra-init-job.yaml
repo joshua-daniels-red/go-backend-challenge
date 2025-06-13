@@ -8,14 +8,18 @@ spec:
       containers:
         - name: cassandra-init
           image: cassandra:4.1
-          command: ["/bin/sh", "-c"]
-          args:
+          command:
+            - "sh"
+            - "-c"
             - |
-              echo '[INIT] Waiting for Cassandra...';
-              sleep 10;
-              echo '[INIT] Applying schema...';
-              cqlsh cassandra -f /init.cql;
-              echo '[INIT] ✅ Done!';
+              echo "[INIT] Waiting for Cassandra to be available..."
+              until cqlsh cassandra -e "DESCRIBE KEYSPACES" > /dev/null 2>&1; do
+                echo "[WAIT] Cassandra not ready yet..."; sleep 2;
+              done
+
+              echo "[INIT] Cassandra is ready! Applying schema..."
+              cqlsh cassandra -f /init.cql
+              echo "[INIT] ✅ Schema applied"
           volumeMounts:
             - name: init-cql
               mountPath: /init.cql
