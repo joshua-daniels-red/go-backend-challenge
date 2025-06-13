@@ -1,4 +1,4 @@
-name: CI/CD - ch-8
+name: CI/CD - ch-8 (Kubernetes)
 
 on:
   push:
@@ -44,39 +44,8 @@ jobs:
       - name: Run unit tests with race detector
         run: go test -race ./... -coverprofile=coverage.out
 
-  docker:
-    name: Build & Push Docker Images
-    needs: test-lint
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ch-8
-
-    strategy:
-      matrix:
-        service: [consumer, producer]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.CR_PAT }}
-
-      - name: Build and Push ${{ matrix.service }} Image
-        run: |
-          IMAGE=ghcr.io/${{ github.repository }}/ch8-${{ matrix.service }}:latest
-          DOCKERFILE=Dockerfile.${{ matrix.service }}
-          docker build -f $DOCKERFILE -t $IMAGE .
-          docker push $IMAGE
-
   verify:
-    name: Integration Verification (Minikube)
-    needs: docker
+    name: Integration Test in Kubernetes (Kind)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -86,41 +55,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Minikube
-        uses: medyagh/setup-minikube@latest
+      - name: Set up Kind cluster
+        uses: helm/kind-action@v1.5.0
         with:
-          minikube-version: 'v1.36.0'
+          cluster_name: kind-ch8
 
-      - name: Enable Minikube Docker Env
-        run: eval $(minikube -p minikube docker-env)
-
-      - name: Build images inside Minikube
+      - name: Set up kubectl context
         run: |
-          docker build -t producer-app:latest -f Dockerfile.producer .
-          docker build -t consumer-app:latest -f Dockerfile.consumer .
+          kubectl cluster-info
 
-      - name: Run setup.sh
+      - name: Build and load Docker images into Kind
+        run: |
+          kind load docker-image producer-app:latest --name kind-ch8 || docker build -t producer-app:latest -f Dockerfile.producer . && kind load docker-image producer-app:latest --name kind-ch8
+          kind load docker-image consumer-app:latest --name kind-ch8 || docker build -t consumer-app:latest -f Dockerfile.consumer . && kind load docker-image consumer-app:latest --name kind-ch8
+
+      - name: Run setup script
         run: |
           chmod +x setup.sh
           ./setup.sh
 
       - name: Wait for services to be ready
-        run: sleep 60
+        run: |
+          kubectl wait --for=condition=ready pod -l app=consumer --timeout=180s
 
-      - name: Port-forward consumer
-        run: kubectl port-forward svc/consumer 30080:8080 &
+      - name: Port forward consumer
+        run: |
+          nohup kubectl port-forward svc/consumer 8080:8080 &
+          sleep 10
 
       - name: Verify /metrics endpoint
         run: |
-          sleep 5
-          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:30080/metrics)
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/metrics)
           if [ "$status" != "200" ]; then
             echo "/metrics endpoint failed with status $status" && exit 1
           fi
 
       - name: Verify /stats endpoint
         run: |
-          response=$(curl -s -w "%{http_code}" http://localhost:30080/stats)
+          response=$(curl -s -w "%{http_code}" http://localhost:8080/stats)
           code=${response: -3}
           body=${response::-3}
           if [ "$code" != "200" ]; then
@@ -128,8 +100,6 @@ jobs:
           fi
           echo "$body" | jq . > /dev/null || (echo "Invalid JSON from /stats" && exit 1)
 
-      - name: Tear down cluster
+      - name: Teardown cluster
         if: always()
-        run: |
-          chmod +x teardown.sh
-          ./teardown.sh
+        run: kind delete cluster --name kind-ch8
